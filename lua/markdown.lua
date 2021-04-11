@@ -9,6 +9,8 @@ local regex = {
     ordered_list        = "^%s*%d+[%)%.]",
 }
 
+-- Responsible for auto-inserting new bullet points when pressing
+-- Return, o or O
 function md.newline(key)
     -- First find which line is above the newly inserted line to be
     local bullet
@@ -33,6 +35,8 @@ function md.newline(key)
 
         insert_line_num = vim.fn.line(".")
         bullet = parse_bullet(insert_line_num)
+    else
+        error(string.format("%s is not a valid key", key))
     end
 
     if bullet then
@@ -62,6 +66,7 @@ function md.newline(key)
 end
 
 -- Pressing tab in insert mode calls this function
+-- Removes auto-inserted bullet if the line is still empty
 function md.insert_tab()
     local line_num = vim.fn.line('.')
     local bullet = parse_bullet(line_num)
@@ -76,7 +81,7 @@ function md.insert_tab()
     end
 end
 
--- Pressing tab calls this function
+-- Pressing tab in normal mode calls this function
 -- Folds by bullets if cursor at one, else folds by headers
 function md.normal_tab()
     local line_num = vim.fn.line('.')
@@ -121,47 +126,39 @@ end
 
 -- Pressing backspace in insert mode calls this function.
 -- Removes auto-inserted list markers
+-- TODO: status line flickers when in use because the keybinding switches
+-- to normal mode for too long.
 function md.backspace()
     -- if beginning of line is list marker, delete it
     -- else normal backspace
-    --local cursor = vim.api.nvim_win_get_cursor(0)
-    --local line = vim.api.nvim_get_current_line()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = vim.api.nvim_get_current_line()
 
-    --local ordered = line:match("^%s*%d+[%)%.]%s*$")
-    --local unordered = line:match("^%s*[%*%-%+]%s*$")
+    local ordered = line:match("^%s*%d+[%)%.]%s*$")
+    local unordered = line:match("^%s*[%*%-%+]%s*$")
 
-    --if ordered then
-    --    -- Remove list marker, but keep spacing
-    --    line = line:gsub("(%d+[%)%.])", string.rep(" ", string.len("%1")))
-    --    vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
-    --elseif unordered then
-    --    line =  line:gsub("[%*%+%-]", " ")
-    --    vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
-    ----elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
-    ---- TODO: reorder list
-    --else
-    --    -- Normal backspace
-        local backspace = vim.api.nvim_replace_termcodes("<BS>", true, false, true)
-        vim.api.nvim_feedkeys(backspace, "n", true)
-    --end
+    if ordered then
+        -- Remove list marker, but keep spacing
+        line = line:gsub("(%d+[%)%.])", string.rep(" ", string.len("%1")))
+        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+    elseif unordered then
+        line =  line:gsub("[%*%+%-]", " ")
+        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+    --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
+    -- TODO: reorder list
+    else
+        -- Normal backspace
+      local backspace = vim.api.nvim_replace_termcodes("<BS>", true, false, true)
+      vim.api.nvim_feedkeys(backspace, "n", true)
+    end
 end
 
 -- Pressing enter in normal mode will call this function.
-function md.enter()
-    -- Check if on link 
-end
-
--- Finds the bullet at a given string and return its properties.
--- If no bullet is found, returns nil
-function match_bullet(line)
-end
-
--- Pressing enter in insert mode or O and o in normal mode will call this function.
--- Insert an appropriate bullet if the line above conaints one.
--- If you enter another newline and the bullet you are at is empty, it will remove it
-function md.newline_insert_bullet()
-end
-
+-- Follows links
+-- TODO
+--function md.enter()
+--    -- Check if on link 
+--end
 
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search
