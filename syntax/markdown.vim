@@ -167,7 +167,7 @@ HtmlHiLink mkdFootnote      Comment
 HtmlHiLink mkdBlockquote    Comment
 HtmlHiLink mkdListItem      Identifier
 HtmlHiLink mkdRule          Identifier
-HtmlHiLink mkdLineBreak     Visual
+"HtmlHiLink mkdLineBreak     Visual " Annoying
 HtmlHiLink mkdFootnotes     htmlLink
 HtmlHiLink mkdLink          htmlLink
 HtmlHiLink mkdURL           htmlString
@@ -177,6 +177,8 @@ HtmlHiLink mkdLinkDef       mkdID
 HtmlHiLink mkdLinkDefTarget mkdURL
 HtmlHiLink mkdLinkTitle     htmlString
 HtmlHiLink mkdDelimiter     Delimiter
+
+hi Folded NONE
 
 let b:current_syntax = "mkd"
 

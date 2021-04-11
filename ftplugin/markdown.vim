@@ -866,8 +866,6 @@ function! s:MarkdownClearSyntaxVariables()
 endfunction
 
 augroup Mkd
-    " These autocmd calling s:MarkdownRefreshSyntax need to be kept in sync with
-    " the autocmds calling s:MarkdownSetupFolding in after/ftplugin/markdown.vim.
     autocmd! * <buffer>
     autocmd BufWinEnter <buffer> call s:MarkdownRefreshSyntax(1)
     autocmd BufUnload <buffer> call s:MarkdownClearSyntaxVariables()
@@ -875,3 +873,19 @@ augroup Mkd
     autocmd InsertEnter,InsertLeave <buffer> call s:MarkdownRefreshSyntax(0)
     autocmd CursorHold,CursorHoldI <buffer> call s:MarkdownRefreshSyntax(0)
 augroup END
+
+function! Foldtext_markdown()
+    let line = getline(v:foldstart)
+    return line . ' ...' .  repeat(" ", winwidth(0))
+endfunction
+
+setlocal foldtext=Foldtext_markdown()
+setlocal conceallevel=2
+nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
+nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
+" imap <silent> <buffer> <BS> <C-o>:lua require("markdown").backspace()<CR>
+imap <silent> <buffer> <TAB> <C-o>:lua require("markdown").insert_tab()<CR>
+
+imap <silent> <buffer> <CR> <C-o>:lua require("markdown").newline("return")<CR>
+nmap <silent> <buffer> o :lua require("markdown").newline("o")<CR>
+nmap <silent> <buffer> O :lua require("markdown").newline("O")<CR>
