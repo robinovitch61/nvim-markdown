@@ -197,10 +197,11 @@ function find_header_or_list(line_num)
 
     -- Special logic to check if the line below is a setex marker, meaning the line passed
     -- is the top of the header
+    local line = vim.fn.getline(line_num)
     local setex_line = vim.fn.getline(line_num + 1)
-    if setex_line:match(regex.setex_equals_header) then
+    if setex_line:match(regex.setex_equals_header) and not line:match("^$") then
         return {line = line_num, type = "setex_equals_header"}
-    elseif setex_line:match(regex.setex_line_header) then
+    elseif setex_line:match(regex.setex_line_header) and not line:match("^$") then
         return {line = line_num, type = "setex_line_header"}
     end
 
@@ -208,7 +209,11 @@ function find_header_or_list(line_num)
         local line = vim.fn.getline(line_num)
         for name, pattern in pairs(regex) do
             if line:match(pattern) then
-                if name == "setex_equals_header" or name == "setex_line_header" then
+                if (name == "setex_equals_header" or name == "setex_line_header") then
+                    if vim.fn.getline(line_num-1):match("^$") then
+                        -- Not actually a setex header without a title
+                        break
+                    end
                     line_num = line_num - 1
                 end
 
@@ -268,10 +273,10 @@ function parse_bullet(bullet_line)
     local bullet = {}
 
     -- Find what sort of bullet it is (*,-,+ ordered)
-    bullet.indent, bullet.marker, bullet.trailing_indent, bullet.text = line:match("^(%s*)([%*%-%+])(%s*)(.*)")
+    bullet.indent, bullet.marker, bullet.trailing_indent, bullet.text = line:match("^(%s*)([%*%-%+])(%s+)(.*)")
     if not bullet.marker then
         -- Check ordered
-        bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s*)(.*)")
+        bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s+)(.*)")
         bullet.type = "ordered_list"
     else
         bullet.delimiter = ""
