@@ -14,6 +14,8 @@ Syntax highlighting, matching rules and mappings for [the original Markdown](htt
 
 ## Installation
 
+<details>
+    <summary>vundle</summary>
 If you use [Vundle](https://github.com/gmarik/vundle), add the following lines to your `~/.vimrc`:
 
 ```vim
@@ -29,6 +31,7 @@ Then run inside Vim:
 :so ~/.vimrc
 :PluginInstall
 ```
+</details>
 
 If you use [Pathogen](https://github.com/tpope/vim-pathogen), do this:
 
