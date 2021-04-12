@@ -9,6 +9,24 @@ local regex = {
     ordered_list        = "^%s*%d+[%)%.]",
 }
 
+-- to make md.backspace only trigger after a new line has been created an extmark
+-- is placed and checked for
+-- TODO: This is a workaround. Another alternative is calling getchangelist() after
+--       every backspace, but that is uglier.
+local id = 1
+local callback_namespace = vim.api.nvim_create_namespace("")
+function key_callback(key)
+    -- extmark is set in the newline function and then removed at the end of this function
+    local extmark = vim.api.nvim_buf_get_extmark_by_id(0, callback_namespace, id, {})
+    local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
+    if #extmark > 0 and key == backspace_term then
+        md.backspace()
+    end
+    vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
+end
+
+vim.register_keystroke_callback(key_callback)
+
 -- Responsible for auto-inserting new bullet points when pressing
 -- Return, o or O
 function md.newline(key)
@@ -28,13 +46,11 @@ function md.newline(key)
         local line = vim.api.nvim_get_current_line()
 
         if cursor < #line then
-            key = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
-            vim.api.nvim_feedkeys(key, "n", true)
-            return
+            bullet = nil
+        else
+            insert_line_num = vim.fn.line(".")
+            bullet = parse_bullet(insert_line_num)
         end
-
-        insert_line_num = vim.fn.line(".")
-        bullet = parse_bullet(insert_line_num)
     else
         error(string.format("%s is not a valid key", key))
     end
@@ -53,13 +69,23 @@ function md.newline(key)
             --    local incremented = vim.fn.getline(bullet_line):sub
         end
 
-        local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
-        vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
-        vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
-        vim.cmd(tostring(insert_line_num + 1)) -- move to line
-        vim.cmd("startinsert!") -- enter insert
+        if #bullet.text == 0 then
+            -- the bullet is empty, remove it and start a new line below it
+            vim.api.nvim_buf_set_lines(0, insert_line_num-1, insert_line_num, true, {"",""})
+            vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
+            vim.cmd("startinsert")
+        else
+            -- Add a new bullet
+            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
+            vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
+            vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
+            id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
+            vim.cmd(tostring(insert_line_num + 1)) -- move to line
+            vim.cmd("startinsert!") -- enter insert
+        end
     else
         -- Normal key
+        --error("Hei")
         key = vim.api.nvim_replace_termcodes(key, true, false, true)
         vim.api.nvim_feedkeys(key, "n", true)
     end
@@ -129,27 +155,26 @@ end
 -- TODO: status line flickers when in use because the keybinding switches
 -- to normal mode for too long.
 function md.backspace()
+
     -- if beginning of line is list marker, delete it
     -- else normal backspace
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = vim.api.nvim_get_current_line()
 
-    local ordered = line:match("^%s*%d+[%)%.]%s*$")
-    local unordered = line:match("^%s*[%*%-%+]%s*$")
+    local ordered = line:match("^%s*%d+[%)%.]%s?%[?%s?%]?%s*$")
+    local unordered = line:match("^%s*[%*%-%+]%s?%[?%s?%]?%s*$")
 
     if ordered then
         -- Remove list marker, but keep spacing
-        line = line:gsub("(%d+[%)%.])", string.rep(" ", string.len("%1")))
+        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     elseif unordered then
-        line =  line:gsub("[%*%+%-]", " ")
+        line = string.rep(" ", #line) .. "r"
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
     -- TODO: reorder list
-    else
-        -- Normal backspace
-      local backspace = vim.api.nvim_replace_termcodes("<BS>", true, false, true)
-      vim.api.nvim_feedkeys(backspace, "n", true)
     end
 end
 
@@ -260,8 +285,11 @@ function parse_bullet(bullet_line)
     end
 
     -- Test for checkbox, too hard to do above
-    if bullet.text:match("%s*%[[%sX]%]") then
-        bullet.checkbox = true
+    local checkbox = bullet.text:match("%s*%[([%sX])%]")
+    if checkbox then
+        bullet.checkbox = {}
+        bullet.checkbox.checked = checkbox == "X" and true or false
+        bullet.text = bullet.text:sub(5)
     end
     
     bullet.indent = #bullet.indent
@@ -362,36 +390,60 @@ end
 function md.toggle_checkbox()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = vim.api.nvim_get_current_line()
+    local bullet = parse_bullet(cursor[1])
 
-    -- Fill checkbox
-    if line:match("^%s*[%*%-%d]%.?%)?%s%[%s%]") then
-        line = line:gsub("%[%s]","[X]")
-        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+    if not bullet then
         return
     end
 
+    -- Fill checkbox
+    if bullet.checkbox and not bullet.checkbox.checked then
+        if #bullet.text == 0 then
+            -- if there is no text the user probably wants to remove the checkbox
+            -- not returning, it will hit the if below, and get replaced again
+            line = line:gsub("%[%s%]","[X]")
+            bullet.checkbox.checked = true
+        else
+            -- else fill it
+            line = line:gsub("%[%s]","[X]")
+            vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+            return
+        end
+
+    end
+
     -- Return to normal list item
-    local _, found = line:find("^%s*[%*%-%d]%.?%)?%s%[X%]")
-    if found then
+    if bullet.checkbox and bullet.checkbox.checked then
         line = line:gsub("%s%[X%]","")
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
 
-        if cursor[2] + 1 > found then
+        -- If the cursor was in the bullet text, move it backwards
+        local text_start = bullet.indent + #bullet.marker + #bullet.delimiter + 1
+        if cursor[2] + 1 > text_start then
             -- removing before cursor should move the cursor too
             vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] - 4}) 
-        elseif cursor[2] + 1 > found - 3 then
+        elseif cursor[2] + 1 > text_start - 3 then
             vim.cmd("norm wB")
         end
         return
     end
 
     -- Convert list item to checkbox
-    local _, found = line:find("^%s*[%*%-%d]%.?%)?%s")
-    if found then
-        line = line:gsub("^(%s*[%*%-%d]%.?%)?)","%1 [ ]")
+    if not bullet.checkbox then
+        local trailing_indent = string.rep(" ", bullet.trailing_indent)
+        if #bullet.text == 0 and bullet.trailing_indent == 0 then
+            trailing_indent = " "
+        end
+
+        line = string.rep(" ", bullet.indent) .. bullet.marker .. bullet.delimiter .. " [ ]" .. trailing_indent .. bullet.text
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
 
-        if cursor[2] + 1 > found then
+        -- if the cursor was in the bullet text, move it forwards
+        local text_start = bullet.indent + #bullet.marker + #bullet.delimiter
+        if cursor[2] + 1 == text_start then
+            -- when in insert mode and you press C-c without indenting
+            vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] + 5}) 
+        elseif cursor[2] + 1 > text_start - 1 then
             vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] + 4}) 
         end
         return
