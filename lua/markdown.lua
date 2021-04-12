@@ -76,12 +76,11 @@ function md.newline(key)
             vim.cmd("startinsert")
         else
             -- Add a new bullet
-            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
+            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox .. " "
             vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
             id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
-            vim.cmd(tostring(insert_line_num + 1)) -- move to line
-            vim.cmd("startinsert!") -- enter insert
+            vim.cmd("startinsert") -- enter insert
         end
     else
         -- Normal key
@@ -166,11 +165,11 @@ function md.backspace()
 
     if ordered then
         -- Remove list marker, but keep spacing
-        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
+        line = string.rep(" ", #line - 1) .. "r" -- needed because the backspace keystroke is handeled normally after the function
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     elseif unordered then
-        line = string.rep(" ", #line) .. "r"
+        line = string.rep(" ", #line - 1) .. "r"
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
@@ -418,12 +417,11 @@ function md.toggle_checkbox()
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
 
         -- If the cursor was in the bullet text, move it backwards
-        local text_start = bullet.indent + #bullet.marker + #bullet.delimiter + 1
+        local checkbox = bullet.checkbox and 4 or 0
+        local text_start = bullet.indent + #bullet.marker + #bullet.delimiter + checkbox
         if cursor[2] + 1 > text_start then
             -- removing before cursor should move the cursor too
             vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] - 4}) 
-        elseif cursor[2] + 1 > text_start - 3 then
-            vim.cmd("norm wB")
         end
         return
     end
@@ -440,10 +438,10 @@ function md.toggle_checkbox()
 
         -- if the cursor was in the bullet text, move it forwards
         local text_start = bullet.indent + #bullet.marker + #bullet.delimiter
-        if cursor[2] + 1 == text_start then
+        if cursor[2] + 1 == text_start + 1 then
             -- when in insert mode and you press C-c without indenting
             vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] + 5}) 
-        elseif cursor[2] + 1 > text_start - 1 then
+        elseif cursor[2] + 1 > text_start then
             vim.api.nvim_win_set_cursor(0, {cursor[1],cursor[2] + 4}) 
         end
         return

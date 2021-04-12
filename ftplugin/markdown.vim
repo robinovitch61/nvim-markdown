@@ -881,7 +881,7 @@ endfunction
 
 setlocal foldtext=Foldtext_markdown()
 setlocal conceallevel=2
-setlocal lazyredraw " to stop flickering of the status bar when doing imaps
+"setlocal lazyredraw " to stop flickering of the status bar when doing imaps
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
 imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
