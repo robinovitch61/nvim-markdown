@@ -21,6 +21,7 @@ To install manually instead, see `:help plugin`
 * Create links `[link text](url)` by pressing `Control-k` in normal or insert mode. If pressed over an url, or in a word, it will autofill the correct field. 
  `tab` can be used in insert mode to skip from one field to the next.
 * Follow links with `Return`. Works with both `[[link text]]` file links and `[link text](url)` style links.
+  
   If the url is not an http address it will be treated like a file link.
 
 ### Concealing
