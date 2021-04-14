@@ -1,49 +1,11 @@
 "TODO print messages when on visual mode. I only see VISUAL, not the messages.
 
-" Function interface phylosophy:
-"
-" - functions take arbitrary line numbers as parameters.
-"    Current cursor line is only a suitable default parameter.
-"
-" - only functions that bind directly to user actions:
-"
-"    - print error messages.
-"       All intermediate functions limit themselves return `0` to indicate an error.
-"
-"    - move the cursor. All other functions do not move the cursor.
-"
-" This is how you should view headers for the header mappings:
-"
-"   |BUFFER
-"   |
-"   |Outside any header
-"   |
-" a-+# a
-"   |
-"   |Inside a
-"   |
-" a-+
-" b-+## b
-"   |
-"   |inside b
-"   |
-" b-+
-" c-+### c
-"   |
-"   |Inside c
-"   |
-" c-+
-" d-|# d
-"   |
-"   |Inside d
-"   |
-" d-+
-" e-|e
-"   |====
-"   |
-"   |Inside e
-"   |
-" e-+
+" Disable inbuilt markdown ftplugin
+if exists("b:did_ftplugin")
+    finish
+else
+    let b:did_ftplugin=1
+endif
 
 " For each level, contains the regexp that matches at that level only.
 "
@@ -170,8 +132,7 @@ function! s:GetHeaderList()
         if l:line =~ '````*' || l:line =~ '\~\~\~\~*'
             if l:fenced_block == 0
                 let l:fenced_block = 1
-            elseif l:fenced_block == 1
-                let l:fenced_block = 0
+            elseif l:fenced_block == 1 let l:fenced_block = 0
             endif
         " exclude lines in frontmatters
         elseif l:vim_markdown_frontmatter == 1
@@ -530,30 +491,6 @@ function! s:HeaderDecrease(line1, line2, ...)
     endfor
 endfunction
 
-" Format table under cursor.
-"
-" Depends on Tabularize.
-"
-function! s:TableFormat()
-    let l:pos = getpos('.')
-    normal! {
-    " Search instead of `normal! j` because of the table at beginning of file edge case.
-    call search('|')
-    normal! j
-    " Remove everything that is not a pipe, colon or hyphen next to a colon othewise
-    " well formated tables would grow because of addition of 2 spaces on the separator
-    " line by Tabularize /|.
-    let l:flags = (&gdefault ? '' : 'g')
-    execute 's/\(:\@<!-:\@!\|[^|:-]\)//e' . l:flags
-    execute 's/--/-/e' . l:flags
-    Tabularize /|
-    " Move colons for alignment to left or right side of the cell.
-    execute 's/:\( \+\)|/\1:|/e' . l:flags
-    execute 's/|\( \+\):/|:\1/e' . l:flags
-    execute 's/ /-/' . l:flags
-    call setpos('.', l:pos)
-endfunction
-
 " Wrapper to do move commands in visual mode.
 "
 function! s:VisMove(f)
@@ -649,77 +586,6 @@ function! s:Markdown_GetUrlForPosition(lnum, col)
     return getline(l:lnum)[l:left - 1 : l:right - 1]
 endfunction
 
-" Front end for GetUrlForPosition.
-"
-function! s:OpenUrlUnderCursor()
-    let l:url = s:Markdown_GetUrlForPosition(line('.'), col('.'))
-    if l:url != ''
-        call s:VersionAwareNetrwBrowseX(l:url)
-    else
-        echomsg 'The cursor is not on a link.'
-    endif
-endfunction
-
-" We need a definition guard because we invoke 'edit' which will reload this
-" script while this function is running. We must not replace it.
-if !exists('*s:EditUrlUnderCursor')
-    function s:EditUrlUnderCursor()
-        let l:url = s:Markdown_GetUrlForPosition(line('.'), col('.'))
-        if l:url != ''
-            if get(g:, 'vim_markdown_autowrite', 0)
-                write
-            endif
-            let l:anchor = ''
-            if get(g:, 'vim_markdown_follow_anchor', 0)
-                let l:parts = split(l:url, '#', 1)
-                if len(l:parts) == 2
-                    let [l:url, l:anchor] = parts
-                    let l:anchorexpr = get(g:, 'vim_markdown_anchorexpr', '')
-                    if l:anchorexpr != ''
-                        let l:anchor = eval(substitute(
-                            \ l:anchorexpr, 'v:anchor',
-                            \ escape('"'.l:anchor.'"', '"'), ''))
-                    endif
-                endif
-            endif
-            if l:url != ''
-                let l:ext = ''
-                if get(g:, 'vim_markdown_no_extensions_in_markdown', 0)
-                    " use another file extension if preferred
-                    if exists('g:vim_markdown_auto_extension_ext')
-                        let l:ext = '.'.g:vim_markdown_auto_extension_ext
-                    else
-                        let l:ext = '.md'
-                    endif
-                endif
-                let l:url = fnameescape(fnamemodify(expand('%:h').'/'.l:url.l:ext, ':.'))
-                let l:editmethod = ''
-                " determine how to open the linked file (split, tab, etc)
-                if exists('g:vim_markdown_edit_url_in')
-                  if g:vim_markdown_edit_url_in == 'tab'
-                    let l:editmethod = 'tabnew'
-                  elseif g:vim_markdown_edit_url_in == 'vsplit'
-                    let l:editmethod = 'vsp'
-                  elseif g:vim_markdown_edit_url_in == 'hsplit'
-                    let l:editmethod = 'sp'
-                  else
-                    let l:editmethod = 'edit'
-                  endif
-                else
-                  " default to current buffer
-                  let l:editmethod = 'edit'
-                endif
-                execute l:editmethod l:url
-            endif
-            if l:anchor != ''
-                silent! execute '/'.l:anchor
-            endif
-        else
-            echomsg 'The cursor is not on a link.'
-        endif
-    endfunction
-endif
-
 function! s:VersionAwareNetrwBrowseX(url)
     if has('patch-7.4.567')
         call netrw#BrowseX(a:url, 0)
@@ -741,8 +607,6 @@ call <sid>MapNormVis('<Plug>Markdown_MoveToNextSiblingHeader', '<sid>MoveToNextS
 call <sid>MapNormVis('<Plug>Markdown_MoveToPreviousSiblingHeader', '<sid>MoveToPreviousSiblingHeader')
 call <sid>MapNormVis('<Plug>Markdown_MoveToParentHeader', '<sid>MoveToParentHeader')
 call <sid>MapNormVis('<Plug>Markdown_MoveToCurHeader', '<sid>MoveToCurHeader')
-nnoremap <Plug>Markdown_OpenUrlUnderCursor :call <sid>OpenUrlUnderCursor()<cr>
-nnoremap <Plug>Markdown_EditUrlUnderCursor :call <sid>EditUrlUnderCursor()<cr>
 
 if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
     call <sid>MapNotHasmapto(']]', 'Markdown_MoveToNextHeader')
@@ -751,14 +615,11 @@ if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
     call <sid>MapNotHasmapto('[]', 'Markdown_MoveToPreviousSiblingHeader')
     call <sid>MapNotHasmapto(']u', 'Markdown_MoveToParentHeader')
     call <sid>MapNotHasmapto(']c', 'Markdown_MoveToCurHeader')
-    call <sid>MapNotHasmapto('gx', 'Markdown_OpenUrlUnderCursor')
-    call <sid>MapNotHasmapto('ge', 'Markdown_EditUrlUnderCursor')
 endif
 
 command! -buffer -range=% HeaderDecrease call s:HeaderDecrease(<line1>, <line2>)
 command! -buffer -range=% HeaderIncrease call s:HeaderDecrease(<line1>, <line2>, 1)
 command! -buffer -range=% SetexToAtx call s:SetexToAtx(<line1>, <line2>)
-command! -buffer TableFormat call s:TableFormat()
 command! -buffer Toc call s:Toc()
 command! -buffer Toch call s:Toc('horizontal')
 command! -buffer Tocv call s:Toc('vertical')
@@ -819,8 +680,8 @@ function! s:MarkdownHighlightSources(force)
             else
                 let include = '@' . toupper(filetype)
             endif
-            let command = 'syntax region %s matchgroup=%s start="^\s*```\s*%s.*$" matchgroup=%s end="\s*```$" keepend contains=%s%s'
-            execute printf(command, group, startgroup, ft, endgroup, include, has('conceal') && get(g:, 'vim_markdown_conceal', 1) && get(g:, 'vim_markdown_conceal_code_blocks', 1) ? ' concealends' : '')
+            let command = 'syntax region %s matchgroup=%s start="^\s*```\s*%s.*$" matchgroup=%s end="\s*```$" keepend contains=%s'
+            execute printf(command, group, startgroup, ft, endgroup, include)
             execute printf('syntax cluster mkdNonListItem add=%s', group)
 
             let b:mkd_known_filetypes[ft] = 1
@@ -866,7 +727,6 @@ function! s:MarkdownClearSyntaxVariables()
 endfunction
 
 augroup Mkd
-    autocmd! * <buffer>
     autocmd BufWinEnter <buffer> call s:MarkdownRefreshSyntax(1)
     autocmd BufUnload <buffer> call s:MarkdownClearSyntaxVariables()
     autocmd BufWritePost <buffer> call s:MarkdownRefreshSyntax(0)
@@ -879,11 +739,13 @@ function! Foldtext_markdown()
     return line . ' ...' .  repeat(" ", winwidth(0))
 endfunction
 
-setlocal formatoptions+=r " auto-insert > on newline
 setlocal comments=b:> " blockquote
+setlocal formatoptions+=r " auto-insert > on newline
+
 setlocal foldtext=Foldtext_markdown()
 setlocal conceallevel=2 " Conceal links, and fenced code
 setlocal lazyredraw " <C-o> imaps make the statusline flicker without this
+
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
 imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>

@@ -71,16 +71,16 @@ function md.newline(key)
 
         if #bullet.text == 0 then
             -- the bullet is empty, remove it and start a new line below it
+            vim.cmd("startinsert")
             vim.api.nvim_buf_set_lines(0, insert_line_num-1, insert_line_num, true, {"",""})
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
-            vim.cmd("startinsert")
         else
             -- Add a new bullet
-            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox .. " "
+            vim.cmd("startinsert") -- enter insert
+            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
             vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
             id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
-            vim.cmd("startinsert") -- enter insert
         end
     else
         -- Normal key
@@ -96,9 +96,11 @@ function md.insert_tab()
     local line_num = vim.fn.line('.')
     local bullet = parse_bullet(line_num)
     if bullet and (#bullet.text == 0 or bullet.text:match("%s*%[.%]")) then
-        local line = string.rep(" ", bullet.indent + vim.o.shiftwidth)
+        local line = string.rep(" ", bullet.indent + vim.o.shiftwidth) 
+        local checkbox = bullet.checkbox and "[ ] " or ""
+        line = line .. bullet.marker .. bullet.delimiter .. string.rep(" ", bullet.trailing_indent) .. checkbox
         vim.api.nvim_buf_set_lines(0, line_num - 1, line_num, true, {line}) 
-        vim.cmd("norm A")
+        vim.api.nvim_win_set_cursor(0,{line_num, 1000000})
     else
         -- normal tab
         local key = vim.api.nvim_replace_termcodes("<TAB>", true, false, true)
@@ -165,11 +167,11 @@ function md.backspace()
 
     if ordered then
         -- Remove list marker, but keep spacing
-        line = string.rep(" ", #line - 1) .. "r" -- needed because the backspace keystroke is handeled normally after the function
+        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     elseif unordered then
-        line = string.rep(" ", #line - 1) .. "r"
+        line = string.rep(" ", #line) .. "r"
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
@@ -277,6 +279,7 @@ function parse_bullet(bullet_line)
     if not bullet.marker then
         -- Check ordered
         bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s+)(.*)")
+        --error(bullet.text, #bullet.trailing_indent)
         bullet.type = "ordered_list"
     else
         bullet.delimiter = ""
@@ -375,11 +378,11 @@ function parse_header(line_num)
         if line:match(regex.atx_header) then
             header.stop = iter - 1
             break
-        elseif iter == line_count then
-            header.stop = iter
-            break
         elseif line:match(regex.setex_equals_header) or line:match(regex.setex_line_header) then
             header.stop = iter - 2
+            break
+        elseif iter == line_count then
+            header.stop = iter
             break
         end
         iter = iter + 1
