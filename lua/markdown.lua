@@ -292,7 +292,7 @@ function parse_bullet(bullet_line)
     end
 
     -- Test for checkbox, too hard to do above
-    local checkbox = bullet.text:match("%s*%[([%sX])%]")
+    local checkbox = bullet.text:match("^%[([%sX])%]")
     if checkbox then
         bullet.checkbox = {}
         bullet.checkbox.checked = checkbox == "X" and true or false
