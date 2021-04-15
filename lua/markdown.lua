@@ -160,11 +160,12 @@ function md.insert_tab()
             vim.api.nvim_win_set_cursor(0, {line_num, stop-1})
         else
             -- go to end
-            if col == #line then
+            if stop == #line then
                 -- insert a space at the end for convenience if at the end of the line
-                vim.cmd("A ")
+                vim.cmd("startinsert!")
+                vim.api.nvim_feedkeys(" ", "n", true)
             else
-                vim.api.nvim_win_set_cursor(0, {line_num, stop+3})
+                vim.api.nvim_win_set_cursor(0, {line_num, stop})
             end
         end
     else
@@ -255,13 +256,13 @@ function md.control_k(in_normal_mode)
     local word = vim.fn.expand("<cWORD>")
     if word:match("/") or vim.fn.filereadable(word) == 1 then
         -- a link or file
-        vim.cmd('norm "_diWa[](a' .. word .. ') Bl')
+        vim.cmd('norm "_diWa[](a' .. word .. ')Bl')
         vim.cmd("startinsert")
     elseif #word > 0 then
-        vim.cmd('norm "_diWi[' .. word .. ']() h')
+        vim.cmd('norm "_diWi[' .. word .. ']()')
         vim.cmd("startinsert") -- it skips two columns back for some reason
     elseif not in_normal_mode then
-        vim.cmd("norm a[]() Bl")
+        vim.cmd("norm a[]()")
         vim.cmd("startinsert")
     end
 
