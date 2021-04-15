@@ -20,9 +20,9 @@ To install manually instead, see `:help plugin`
 * Auto-inserts bullets on newline; can be removed again with `backspace` while preserving indentation, or `tab` to create a sub-list.
 * Create links `[link text](url)` by pressing `Control-k` in normal or insert mode. If pressed over an url, or in a word, it will autofill the correct field. 
  `tab` can be used in insert mode to skip from one field to the next.
-* Follow links with `Return`, works fith:
+* Follow links with `Return`, works with:
     * Files
-    * urls
+    * URLs
     * `[](#anchor)` links to go the position of the header
 
 ## Options
