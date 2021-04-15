@@ -38,10 +38,6 @@ When choosing between multiple valid Markdown syntaxes, the default behavior mus
 
 If you wish to have a behavior that differs from that style guide, add an option to turn it on or off, and leave it off by default.
 
-## Tests
-
-All new features must have unit tests.
-
 ## Issues
 
 Issues are tracked within GitHub.
