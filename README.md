@@ -14,42 +14,18 @@ To install manually instead, see `:help plugin`
 
 ## Features
 
-* Syntax highlighting with concealment of links and text formatting.
+* Syntax highlighting with optional concealment of links and text formatting.
 * Fold headers and lists by pressing `tab` in normal mode.
 * Insert checkboxes `[X]` by pressing `Control-c` in insert or normal mode.
 * Auto-inserts bullets on newline; can be removed again with `backspace` while preserving indentation, or `tab` to create a sub-list.
 * Create links `[link text](url)` by pressing `Control-k` in normal or insert mode. If pressed over an url, or in a word, it will autofill the correct field. 
  `tab` can be used in insert mode to skip from one field to the next.
-* Follow links with `Return`. Works with both `[[link text]]` file links and `[link text](url)` style links.
-  If the url is not an http address it will be treated like a file link.
-
-### Concealing
-
-Concealing is set for some syntax such as bold, italic, code block and link.
-
-Concealing lets you conceal text with other text. The actual source text is not modified. If you put your cursor on the concealed line, the conceal goes away.
-
-[Options](#options) are available to disable or change concealing.
-
-Try `:help concealcursor` and `:help conceallevel` for details.
+* Follow links with `Return`.
+    * Http addresses (Must not start with `http(s)://`, but must contain at least one `/`)
+    * `[](#anchor)` links go to the position of the header
+    * Everything else is treated as a file link
 
 ## Options
-<details><summary>Enable TOC window auto-fit</summary>
-
-Allow for the TOC window to auto-fit when it's possible for it to shrink.
-It never increases its default size (half screen), it only shrinks.
-
-        let g:vim_markdown_toc_autofit = 1
-</details>
-
-
-<details><summary>Text emphasis restriction to single-lines</summary>
-
-By default text emphasis works across multiple lines until a closing token is found. However, it's possible to restrict text emphasis to a single line (i.e., for it to be applied a closing token must be found on the same line). To do so:
-
-        let g:vim_markdown_emphasis_multiline = 0
-</details>
-
 <details><summary>Syntax Concealing</summary>
 
 Concealing is set for some syntax.
@@ -72,6 +48,22 @@ To disable math conceal with LaTeX math syntax enabled, add the following to you
         let g:tex_conceal = ""
         let g:vim_markdown_math = 1
 
+</details>
+
+<details><summary>Enable TOC window auto-fit</summary>
+
+Allow for the TOC window to auto-fit when it's possible for it to shrink.
+It never increases its default size (half screen), it only shrinks.
+
+        let g:vim_markdown_toc_autofit = 1
+</details>
+
+
+<details><summary>Text emphasis restriction to single-lines</summary>
+
+By default text emphasis works across multiple lines until a closing token is found. However, it's possible to restrict text emphasis to a single line (i.e., for it to be applied a closing token must be found on the same line). To do so:
+
+        let g:vim_markdown_emphasis_multiline = 0
 </details>
 
 <details><summary>Fenced code block languages</summary> 
@@ -130,12 +122,12 @@ JSON syntax highlight requires [vim-json](https://github.com/elzr/vim-json).
 
 The following work on normal and visual modes:
 
--   `]]`: go to next header. `<Plug>Markdown_MoveToNextHeader`
--   `[[`: go to previous header. Contrast with `]c`. `<Plug>Markdown_MoveToPreviousHeader`
--   `][`: go to next sibling header if any. `<Plug>Markdown_MoveToNextSiblingHeader`
--   `[]`: go to previous sibling header if any. `<Plug>Markdown_MoveToPreviousSiblingHeader`
--   `]c`: go to Current header. `<Plug>Markdown_MoveToCurHeader`
--   `]u`: go to parent header (Up). `<Plug>Markdown_MoveToParentHeader`
+- `]]`: go to next header. `<Plug>Markdown_MoveToNextHeader`
+- `[[`: go to previous header. Contrast with `]c`. `<Plug>Markdown_MoveToPreviousHeader`
+- `][`: go to next sibling header if any. `<Plug>Markdown_MoveToNextSiblingHeader`
+- `[]`: go to previous sibling header if any. `<Plug>Markdown_MoveToPreviousSiblingHeader`
+- `]c`: go to Current header. `<Plug>Markdown_MoveToCurHeader`
+- `]u`: go to parent header (Up). `<Plug>Markdown_MoveToParentHeader`
 
 This plugin follows the recommended Vim plugin mapping interface, so to change the map `]u` to `asdf`, add to your `.vimrc`:
 

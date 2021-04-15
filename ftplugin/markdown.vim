@@ -132,7 +132,8 @@ function! s:GetHeaderList()
         if l:line =~ '````*' || l:line =~ '\~\~\~\~*'
             if l:fenced_block == 0
                 let l:fenced_block = 1
-            elseif l:fenced_block == 1 let l:fenced_block = 0
+            elseif l:fenced_block == 1
+                let l:fenced_block = 0
             endif
         " exclude lines in frontmatters
         elseif l:vim_markdown_frontmatter == 1
@@ -750,6 +751,7 @@ nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
 imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
 imap <silent> <buffer> <TAB> <C-o>:lua require("markdown").insert_tab()<CR>
+nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
 
 imap <silent> <buffer> <CR> <C-o>:lua require("markdown").newline("return")<CR>
 nmap <silent> <buffer> o :lua require("markdown").newline("o")<CR>

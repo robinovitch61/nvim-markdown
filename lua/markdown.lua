@@ -56,6 +56,7 @@ function md.newline(key)
     end
 
     if bullet then
+        local bullet_below = parse_bullet(insert_line_num + 1)
         local indent = string.rep(" ", bullet.indent)
         local trailing_indent = string.rep(" ", bullet.trailing_indent)
         local marker = bullet.marker
@@ -76,8 +77,16 @@ function md.newline(key)
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
         else
             -- Add a new bullet
+            local new_line
+            if bullet_below then
+                -- if there is a bullet below, it's assumed the user wants another child bullet
+                new_line = string.rep(" ", bullet_below.indent)
+            else
+                new_line = indent
+            end
+
             vim.cmd("startinsert") -- enter insert
-            local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
+            new_line = new_line .. marker .. bullet.delimiter .. trailing_indent .. checkbox
             vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
             id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
@@ -179,12 +188,36 @@ function md.backspace()
     end
 end
 
--- Pressing enter in normal mode will call this function.
+-- Pressing return in normal mode will call this function.
 -- Follows links
--- TODO
---function md.enter()
---    -- Check if on link 
---end
+function md._return()
+    local word = vim.fn.expand("<cWORD>") -- word under cursor delimited by whitespace
+    local link = word:match("^%[.*%]%((.*)%)$")
+
+    if link then
+        if vim.fn.filereadable(link) == 1 then
+            -- a file
+            vim.cmd("e " .. link)
+        elseif link:match("^#") then
+            -- an anchor
+            vim.fn.search("^#*"..link)
+        else
+            -- assume it's a link
+            if not link:match("^https?://") then
+                link = "https://" .. link
+            end
+            vim.call("netrw#BrowseX", link, 0)
+        end
+    elseif word:match("/") then
+        -- Bare url i.e without link syntax
+        local url = word
+        if not url:match("^https?://") then
+            url = "https://" .. url
+        end
+        vim.call("netrw#BrowseX", url, 0)
+    end
+
+end
 
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search
