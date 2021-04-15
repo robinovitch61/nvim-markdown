@@ -21,7 +21,7 @@ To install manually instead, see `:help plugin`
 * Create links `[link text](url)` by pressing `Control-k` in normal or insert mode. If pressed over an url, or in a word, it will autofill the correct field. 
  `tab` can be used in insert mode to skip from one field to the next.
 * Follow links with `Return`.
-    * Http addresses (Must not start with `http(s)://`, but must contain at least one `/`)
+    * Http addresses
     * `[](#anchor)` links go to the position of the header
     * Everything else is treated as a file link
 

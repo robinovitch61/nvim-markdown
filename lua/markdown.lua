@@ -25,6 +25,33 @@ function key_callback(key)
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
 end
 
+-- Pressing backspace in insert mode calls this function.
+-- Removes auto-inserted list markers
+function md.backspace()
+
+    -- if beginning of line is list marker, delete it
+    -- else normal backspace
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = vim.api.nvim_get_current_line()
+
+    local ordered = line:match("^%s*%d+[%)%.]%s?%[?%s?%]?%s*$")
+    local unordered = line:match("^%s*[%*%-%+]%s?%[?%s?%]?%s*$")
+
+    if ordered then
+        -- Remove list marker, but keep spacing
+        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
+        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
+    elseif unordered then
+        line = string.rep(" ", #line) .. "r"
+        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
+    --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
+    -- TODO: reorder list
+    end
+end
+
+
 vim.register_keystroke_callback(key_callback)
 
 -- Responsible for auto-inserting new bullet points when pressing
@@ -93,7 +120,6 @@ function md.newline(key)
         end
     else
         -- Normal key
-        --error("Hei")
         key = vim.api.nvim_replace_termcodes(key, true, false, true)
         vim.api.nvim_feedkeys(key, "n", true)
     end
@@ -104,12 +130,43 @@ end
 function md.insert_tab()
     local line_num = vim.fn.line('.')
     local bullet = parse_bullet(line_num)
+    local link = string.match(vim.fn.expand("<cWORD>"), "^(%[.*%]%(.*%))$")
     if bullet and (#bullet.text == 0 or bullet.text:match("%s*%[.%]")) then
+        -- empty bullet
         local line = string.rep(" ", bullet.indent + vim.o.shiftwidth) 
         local checkbox = bullet.checkbox and "[ ] " or ""
         line = line .. bullet.marker .. bullet.delimiter .. string.rep(" ", bullet.trailing_indent) .. checkbox
         vim.api.nvim_buf_set_lines(0, line_num - 1, line_num, true, {line}) 
         vim.api.nvim_win_set_cursor(0,{line_num, 1000000})
+    elseif link then
+        -- Need to find the position of the cursor in the link
+        local pos1, pos2 = 0, 0
+        local col = vim.api.nvim_win_get_cursor(0)[2]
+        col = col + 1
+        local line = vim.fn.getline(".")
+        repeat
+            start, stop = line:find(link,0,true)
+            break
+        until stop > col
+
+        local cur_line_pos = col - start + 1
+        _, bracket = link:find("%[%]")
+        parenthesis = link:find("%(%)")
+        if bracket and cur_line_pos > bracket then
+            -- Switch to empty brackets from parentheses
+            vim.api.nvim_win_set_cursor(0, {line_num, start})
+        elseif parenthesis and cur_line_pos < parenthesis then
+            -- Switch to empty parentheses from brackets
+            vim.api.nvim_win_set_cursor(0, {line_num, stop-1})
+        else
+            -- go to end
+            if col == #line then
+                -- insert a space at the end for convenience if at the end of the line
+                vim.cmd("A ")
+            else
+                vim.api.nvim_win_set_cursor(0, {line_num, stop+3})
+            end
+        end
     else
         -- normal tab
         local key = vim.api.nvim_replace_termcodes("<TAB>", true, false, true)
@@ -160,34 +217,6 @@ function md.normal_tab()
     end
 end
 
--- Pressing backspace in insert mode calls this function.
--- Removes auto-inserted list markers
--- TODO: status line flickers when in use because the keybinding switches
--- to normal mode for too long.
-function md.backspace()
-
-    -- if beginning of line is list marker, delete it
-    -- else normal backspace
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    local line = vim.api.nvim_get_current_line()
-
-    local ordered = line:match("^%s*%d+[%)%.]%s?%[?%s?%]?%s*$")
-    local unordered = line:match("^%s*[%*%-%+]%s?%[?%s?%]?%s*$")
-
-    if ordered then
-        -- Remove list marker, but keep spacing
-        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
-        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
-        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
-    elseif unordered then
-        line = string.rep(" ", #line) .. "r"
-        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
-        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
-    --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
-    -- TODO: reorder list
-    end
-end
-
 -- Pressing return in normal mode will call this function.
 -- Follows links
 function md._return()
@@ -216,9 +245,27 @@ function md._return()
         end
         vim.call("netrw#BrowseX", url, 0)
     end
-
 end
 
+-- This function is called when control-k is pressed
+-- Takes the word under the cursor and puts it in the appropriate spot in a link.
+-- If no word is under the cursor, then insert the link syntax
+-- as long as it is not currently in normal mode, flagged by the argument.
+function md.control_k(in_normal_mode)
+    local word = vim.fn.expand("<cWORD>")
+    if word:match("/") or vim.fn.filereadable(word) == 1 then
+        -- a link or file
+        vim.cmd('norm "_diWa[](a' .. word .. ') Bl')
+        vim.cmd("startinsert")
+    elseif #word > 0 then
+        vim.cmd('norm "_diWi[' .. word .. ']() h')
+        vim.cmd("startinsert") -- it skips two columns back for some reason
+    elseif not in_normal_mode then
+        vim.cmd("norm a[]() Bl")
+        vim.cmd("startinsert")
+    end
+
+end
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search
 function find_header_or_list(line_num)

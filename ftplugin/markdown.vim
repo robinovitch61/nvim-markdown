@@ -752,6 +752,8 @@ imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
 imap <silent> <buffer> <TAB> <C-o>:lua require("markdown").insert_tab()<CR>
 nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
+imap <silent> <buffer> <C-k> <esc>:lua require("markdown").control_k()<CR>
+nmap <silent> <buffer> <C-k> :lua require("markdown").control_k("dont_insert_if_nothing_under_cursor")<CR>
 
 imap <silent> <buffer> <CR> <C-o>:lua require("markdown").newline("return")<CR>
 nmap <silent> <buffer> o :lua require("markdown").newline("o")<CR>
