@@ -105,7 +105,7 @@ function md.newline(key)
         else
             -- Add a new bullet
             local new_line
-            if bullet_below then
+            if bullet_below  and bullet_below.indent > bullet.indent then
                 -- if there is a bullet below, it's assumed the user wants another child bullet
                 new_line = string.rep(" ", bullet_below.indent)
             else
@@ -264,7 +264,7 @@ function md.control_k(in_normal_mode)
         vim.cmd("startinsert") -- it skips two columns back for some reason
     elseif not in_normal_mode then
         -- just insert link syntax
-        vim.cmd("norm a[]()")
+        vim.cmd("norm a[]()Bl")
         vim.cmd("startinsert")
     end
 
