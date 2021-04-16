@@ -60,12 +60,27 @@ function md.newline(key)
     -- First find which line is above the newly inserted line to be
     local bullet
     local insert_line_num
+    local folded
     if key == "O" then
-        insert_line_num = vim.fn.line(".") - 1
-        bullet = parse_bullet(insert_line_num)
+        if vim.fn.foldclosed(".") > 0 then
+            insert_line_num = vim.fn.foldclosed(".") - 1
+            bullet = parse_bullet(vim.fn.foldclosed("."))
+            folded = true
+        else
+            insert_line_num = vim.fn.line(".") - 1
+            bullet = parse_bullet(vim.fn.line("."))
+        end
     elseif key == "o" then
-        insert_line_num = vim.fn.line(".")
-        bullet = parse_bullet(insert_line_num)
+        if vim.fn.foldclosed(".") > 0 then
+            insert_line_num = vim.fn.foldclosedend(".")
+             -- XXX: bullet must be parsed at beginning of fold explicitly because when folding
+             -- the cursor is left behind inside the fold, even though it looks as if it is at the beginning.
+            bullet = parse_bullet(vim.fn.foldclosed("."))
+            folded = true
+        else
+            insert_line_num = vim.fn.line(".")
+            bullet = parse_bullet(vim.fn.line("."))
+        end
     elseif key == "return" then
         key = "<CR>" -- Can't pass directly to mapping?
         -- if not at EOL, normal Return
@@ -82,7 +97,33 @@ function md.newline(key)
         error(string.format("%s is not a valid key", key))
     end
 
-    if bullet then
+    if bullet and folded then
+        -- is a folded bullet
+        local indent = string.rep(" ", bullet.indent)
+        local trailing_indent = string.rep(" ", bullet.trailing_indent)
+        local marker = bullet.marker
+        local checkbox = bullet.checkbox and "[ ] " or ""
+
+        if tonumber(marker) then
+            marker = marker + 1
+            -- TODO: reoder list if there are other bullets below
+            --other_bullets = parse_list(bullet.start)
+            --for _, bullet_line in pairs(other_bullets) do
+            --    local incremented = vim.fn.getline(bullet_line):sub
+        end
+
+        local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
+        vim.cmd("startinsert") -- enter insert
+        vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
+        vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
+        id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
+    elseif folded then
+        -- is a folded header
+        local new_line = ""
+        vim.cmd("startinsert") -- enter insert
+        vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
+        vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
+    elseif bullet then
         local bullet_below = parse_bullet(insert_line_num + 1)
         local indent = string.rep(" ", bullet.indent)
         local trailing_indent = string.rep(" ", bullet.trailing_indent)
@@ -105,15 +146,15 @@ function md.newline(key)
         else
             -- Add a new bullet
             local new_line
-            if bullet_below  and bullet_below.indent > bullet.indent then
+            if bullet_below and bullet_below.indent > bullet.indent then
                 -- if there is a bullet below, it's assumed the user wants another child bullet
                 new_line = string.rep(" ", bullet_below.indent)
             else
                 new_line = indent
             end
 
-            vim.cmd("startinsert") -- enter insert
             new_line = new_line .. marker .. bullet.delimiter .. trailing_indent .. checkbox
+            vim.cmd("startinsert") -- enter insert
             vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
             vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
             id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
@@ -227,6 +268,7 @@ function md._return()
     if link then
         if vim.fn.filereadable(link) == 1 then
             -- a file
+            -- TODO: It should be possible to enter a file where the url has a path exists but not the file.
             vim.cmd("e " .. link)
         elseif link:match("^#") then
             -- an anchor
@@ -362,7 +404,6 @@ function parse_bullet(bullet_line)
     if not bullet.marker then
         -- Check ordered
         bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s+)(.*)")
-        --error(bullet.text, #bullet.trailing_indent)
         bullet.type = "ordered_list"
     else
         bullet.delimiter = ""
@@ -387,9 +428,10 @@ function parse_bullet(bullet_line)
     bullet.start = bullet_line
 
     -- Iterate down to find bottom of bullet and if it has children
-    local iter = bullet.start + 1
+
     local line_count = vim.api.nvim_buf_line_count(0)
-    while iter <= line_count  do
+    local iter = bullet.start + 1 -- start one past end if at last line [1]
+    while true do 
         local indent = vim.fn.indent(iter)
 
         -- Test for children
@@ -408,8 +450,9 @@ function parse_bullet(bullet_line)
         end
 
         -- Last line will always be end
-        if iter == line_count then
-            bullet.stop = iter
+        if iter >= line_count then
+            -- [1] checked for being above here
+            bullet.stop = line_count
             break
         end
 

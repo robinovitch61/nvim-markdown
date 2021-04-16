@@ -735,6 +735,12 @@ augroup Mkd
     autocmd CursorHold,CursorHoldI <buffer> call s:MarkdownRefreshSyntax(0)
 augroup END
 
+augroup remember_folds
+    autocmd!
+    autocmd BufWinLeave * mkview
+    autocmd BufWinEnter * silent! loadview
+augroup END
+
 function! Foldtext_markdown()
     let line = getline(v:foldstart)
     return line . ' ...' .  repeat(" ", winwidth(0))
