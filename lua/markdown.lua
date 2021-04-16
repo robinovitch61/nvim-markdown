@@ -259,9 +259,11 @@ function md.control_k(in_normal_mode)
         vim.cmd('norm "_diWa[](a' .. word .. ')Bl')
         vim.cmd("startinsert")
     elseif #word > 0 then
+        -- a word
         vim.cmd('norm "_diWi[' .. word .. ']()')
         vim.cmd("startinsert") -- it skips two columns back for some reason
     elseif not in_normal_mode then
+        -- just insert link syntax
         vim.cmd("norm a[]()")
         vim.cmd("startinsert")
     end

@@ -35,18 +35,16 @@ Also, `_italic_` and `*italic*` will conceal to just _italic_.
 Similarly `__bold__`, `**bold**`, `___italic bold___`, and `***italic bold***`
 will conceal to just __bold__, **bold**, ___italic bold___, and ***italic bold*** respectively.
 
-To enable conceal use Vim's standard conceal configuration.
+To change what is concealed use one of these in your vimrc:
 
-        set conceallevel=2
-
-To disable conceal regardless of `conceallevel` setting, add the following to your `.vimrc`:
-
-        let g:vim_markdown_conceal = 0
+    let g:vim_markdown_conceal = 0 " Nothing is concealed
+    let g:vim_markdown_conceal = 1 " Links are concealed
+    let g:vim_markdown_conceal = 2 " Links and text formatting is concealed
 
 To disable math conceal with LaTeX math syntax enabled, add the following to your `.vimrc`:
 
-        let g:tex_conceal = ""
-        let g:vim_markdown_math = 1
+    let g:tex_conceal = ""
+    let g:vim_markdown_math = 1
 
 </details>
 

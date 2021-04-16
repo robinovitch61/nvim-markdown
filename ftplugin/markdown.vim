@@ -742,9 +742,8 @@ endfunction
 
 setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
-
+setlocal conceallevel=2
 setlocal foldtext=Foldtext_markdown()
-setlocal conceallevel=2 " Conceal links, and fenced code
 setlocal lazyredraw " <C-o> imaps make the statusline flicker without this
 
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
