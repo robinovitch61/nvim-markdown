@@ -227,35 +227,47 @@ function md.normal_tab()
         return
     end
 
-    local section = find_header_or_list(line_num)
+    local iter = line_num
+    while true do
+        -- iterates up until it finds something foldable, or the beginning of the file
+        local section = find_header_or_list(iter)
 
-    if section.type:match("list") then
-        local bullet = parse_bullet(section.line)
-
-        if line_num < bullet.start or line_num > bullet.stop then
-            -- cursor isn't inside the list
-            return
+        if not section then
+            -- iterates until it finds something
+            break
         end
 
-        local fold_start, fold_stop = nil, nil
-        if bullet.has_children then
-            -- Will fold the bullet and its children
-            fold_start = bullet.start
-            fold_stop = bullet.stop
-        elseif bullet.parent then
-            -- Bullet doesn't have any children, assume that you wanted to fold the parent
-            fold_start = bullet.parent.start
-            fold_stop = bullet.parent.stop
-        end
+        if section.type:match("list") then
+            local bullet = parse_bullet(section.line)
 
-        -- if fold_start is still nil, it's a bullet that can't be folded
-        if fold_start then
-            vim.cmd(string.format("%d,%dfold",fold_start, fold_stop))
+            if line_num < bullet.start or line_num > bullet.stop then
+                -- cursor isn't inside the list
+                bullet = nil
+            end
+
+            local fold_start, fold_stop = nil, nil
+            if bullet and bullet.has_children then
+                -- Will fold the bullet and its children
+                fold_start = bullet.start
+                fold_stop = bullet.stop
+            elseif bullet and bullet.parent then
+                -- Bullet doesn't have any children, assume that you wanted to fold the parent
+                fold_start = bullet.parent.start
+                fold_stop = bullet.parent.stop
+            end
+
+            -- if fold_start is still nil, it's a bullet that can't be folded
+            if fold_start then
+                vim.cmd(string.format("%d,%dfold",fold_start, fold_stop))
+                break
+            end
+        elseif section.type:match("header") then
+            -- if header, fold it entire thing
+            local header = parse_header(section.line)
+            vim.cmd(string.format("%d,%dfold", header.start, header.stop))
+            break
         end
-    elseif section.type:match("header") then
-        -- if header, fold it entire thing
-        local header = parse_header(section.line)
-        vim.cmd(string.format("%d,%dfold", header.start, header.stop))
+        iter = section.line - 1
     end
 end
 
