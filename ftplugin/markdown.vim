@@ -737,8 +737,8 @@ augroup END
 
 augroup remember_folds
     autocmd!
-    autocmd BufWinLeave * mkview
-    autocmd BufWinEnter * silent! loadview
+    autocmd BufWinLeave <buffer> mkview
+    autocmd BufWinEnter <buffer> silent! loadview
 augroup END
 
 function! Foldtext_markdown()

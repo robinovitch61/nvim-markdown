@@ -39,7 +39,7 @@ To change what is concealed use one of these in your vimrc:
 
     let g:vim_markdown_conceal = 0 " Nothing is concealed
     let g:vim_markdown_conceal = 1 " Links are concealed
-    let g:vim_markdown_conceal = 2 " Links and text formatting is concealed
+    let g:vim_markdown_conceal = 2 " Links and text formatting is concealed (default)
 
 To disable math conceal with LaTeX math syntax enabled, add the following to your `.vimrc`:
 
