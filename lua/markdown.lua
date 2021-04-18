@@ -214,13 +214,13 @@ function md.insert_tab()
             vim.api.nvim_win_set_cursor(0, {line_num, link_stop-1})
         else
             -- go to end
-            if link_stop == #line then
-                -- insert a space at the end for convenience if at the end of the line
-                vim.cmd("startinsert!")
-                vim.api.nvim_feedkeys(" ", "n", true)
-            else
-                vim.api.nvim_win_set_cursor(0, {line_num, link_stop+1})
-            end
+            --if link_stop == #line then
+            --    -- insert a space at the end for convenience if at the end of the line
+            --    vim.cmd("startinsert!")
+            --    vim.api.nvim_feedkeys(" ", "n", true)
+            --else
+                vim.api.nvim_win_set_cursor(0, {line_num, link_stop})
+            --end
         end
     else
         -- normal tab
@@ -286,10 +286,20 @@ end
 -- Pressing return in normal mode will call this function.
 -- Follows links
 function md._return()
-    local word = vim.fn.expand("<cWORD>") -- word under cursor delimited by whitespace
-    local link = word:match("^%[.*%]%((.*)%)$")
+    -- Find if inside link
+    local line = vim.fn.getline('.')
+    local column = vim.api.nvim_win_get_cursor(0)[2] + 1
+    local link_start, link_stop, link 
+    local start = 1
+    repeat
+        -- repeats until it finds a link the cursor is inside or ends as nil
+        link_start, link_stop, link = line:find("%[.-%]%((.-)%)", start)
+        if link_start then
+            start = link_stop + 1
+        end
+    until not link_start or (link_start < column and link_stop >= column)
 
-    if link then
+    if link and #link > 0 then
         if vim.fn.filereadable(link) == 1 then
             -- a file
             -- TODO: It should be possible to enter a file where the path exists but the file
@@ -305,9 +315,9 @@ function md._return()
             end
             vim.call("netrw#BrowseX", link, 0)
         end
-    elseif word:match("/") then
+    elseif vim.fn.expand("<cWORD>"):match("/") then
         -- Bare url i.e without link syntax
-        local url = word
+        local url = vim.fn.expand("<cWORD>")
         if not url:match("^https?://") then
             url = "https://" .. url
         end
@@ -327,8 +337,9 @@ function md.control_k(in_normal_mode)
         vim.cmd("startinsert")
     elseif #word > 0 then
         -- a word
-        vim.cmd('norm "_ciW[' .. word .. ']()')
-        vim.cmd("startinsert") -- it skips two columns back for some reason
+        word = vim.fn.expand("<cword>")
+        vim.cmd('norm "_ciw[' .. word .. ']()')
+        vim.cmd("startinsert")
     elseif not in_normal_mode then
         -- just insert link syntax
         vim.cmd("norm a[]()Bl")
