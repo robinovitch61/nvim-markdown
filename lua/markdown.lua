@@ -57,7 +57,7 @@ vim.register_keystroke_callback(key_callback)
 -- Responsible for auto-inserting new bullet points when pressing
 -- Return, o or O
 function md.newline(key)
-    -- First find which line is above the newly inserted line to be
+    -- First find which line is above the newly inserted line to-be
     local bullet
     local insert_line_num
     local folded
