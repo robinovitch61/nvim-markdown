@@ -233,7 +233,6 @@ function md.normal_tab()
         local section = find_header_or_list(iter)
 
         if not section then
-            -- iterates until it finds something
             break
         end
 
@@ -280,7 +279,8 @@ function md._return()
     if link then
         if vim.fn.filereadable(link) == 1 then
             -- a file
-            -- TODO: It should be possible to enter a file where the url has a path exists but not the file.
+            -- TODO: It should be possible to enter a file where the path exists but the file
+            -- hasn't been created yet.
             vim.cmd("e " .. link)
         elseif link:match("^#") then
             -- an anchor
