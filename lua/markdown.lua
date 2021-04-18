@@ -337,7 +337,7 @@ function md.control_k(in_normal_mode)
         vim.cmd("startinsert")
     elseif #word > 0 then
         -- a word
-        word = vim.fn.expand("<cword>")
+        word = vim.fn.expand("<cword>") -- probably unnecessary, but makes sure to only use the last word in case it is in contact with something up-front
         vim.cmd('norm "_ciw[' .. word .. ']()')
         vim.cmd("startinsert")
     elseif not in_normal_mode then
