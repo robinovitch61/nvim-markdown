@@ -170,8 +170,23 @@ end
 -- Removes auto-inserted bullet if the line is still empty
 function md.insert_tab()
     local line_num = vim.fn.line('.')
+
+    -- Check if bullet
     local bullet = parse_bullet(line_num)
-    local link = string.match(vim.fn.expand("<cWORD>"), "^(%[.*%]%(.*%))$")
+
+    -- Find if inside link
+    local line = vim.fn.getline('.')
+    local column = vim.api.nvim_win_get_cursor(0)[2] + 1
+    local link_start, link_stop, link 
+    local start = 1
+    repeat
+        -- repeats until it finds a link the cursor is inside or ends as nil
+        link_start, link_stop, link = line:find("(%[.-%]%(.-%))", start)
+        if link_start then
+            start = link_stop + 1
+        end
+    until not link_start or (link_start < column and link_stop >= column)
+
     if bullet and (#bullet.text == 0 or bullet.text:match("%s*%[.%]")) then
         -- empty bullet
         local line = string.rep(" ", bullet.indent + vim.o.shiftwidth) 
@@ -181,32 +196,30 @@ function md.insert_tab()
         vim.api.nvim_win_set_cursor(0,{line_num, 1000000})
     elseif link then
         -- Need to find the position of the cursor in the link
-        local pos1, pos2 = 0, 0
-        local col = vim.api.nvim_win_get_cursor(0)[2]
-        col = col + 1
-        local line = vim.fn.getline(".")
-        repeat
-            start, stop = line:find(link,0,true)
-            break
-        until stop > col
+        --local pos1, pos2 = 0, 0
+        --local line = vim.fn.getline(".")
+        --repeat
+        --    start, stop = line:find(link,0,true)
+        --    break
+        --until stop > column
 
-        local cur_line_pos = col - start + 1
+        local relative_postition = column - link_start + 1
         _, bracket = link:find("%[%]")
         parenthesis = link:find("%(%)")
-        if bracket and cur_line_pos > bracket then
+        if bracket and relative_postition > bracket then
             -- Switch to empty brackets from parentheses
             vim.api.nvim_win_set_cursor(0, {line_num, start})
-        elseif parenthesis and cur_line_pos < parenthesis then
+        elseif parenthesis and relative_postition < parenthesis then
             -- Switch to empty parentheses from brackets
-            vim.api.nvim_win_set_cursor(0, {line_num, stop-1})
+            vim.api.nvim_win_set_cursor(0, {line_num, link_stop-1})
         else
             -- go to end
-            if stop == #line then
+            if link_stop == #line then
                 -- insert a space at the end for convenience if at the end of the line
                 vim.cmd("startinsert!")
                 vim.api.nvim_feedkeys(" ", "n", true)
             else
-                vim.api.nvim_win_set_cursor(0, {line_num, stop})
+                vim.api.nvim_win_set_cursor(0, {line_num, link_stop+1})
             end
         end
     else
@@ -310,11 +323,11 @@ function md.control_k(in_normal_mode)
     local word = vim.fn.expand("<cWORD>")
     if word:match("/") or vim.fn.filereadable(word) == 1 then
         -- a link or file
-        vim.cmd('norm "_diWa[](a' .. word .. ')Bl')
+        vim.cmd('norm "_ciW[](a' .. word .. ')Bl')
         vim.cmd("startinsert")
     elseif #word > 0 then
         -- a word
-        vim.cmd('norm "_diWa[' .. word .. ']()')
+        vim.cmd('norm "_ciW[' .. word .. ']()')
         vim.cmd("startinsert") -- it skips two columns back for some reason
     elseif not in_normal_mode then
         -- just insert link syntax
