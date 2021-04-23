@@ -15,7 +15,7 @@ local regex = {
 --       every backspace, but that is uglier.
 local id = 1
 local callback_namespace = vim.api.nvim_create_namespace("")
-function key_callback(key)
+local function key_callback(key)
     -- extmark is set in the newline function and then removed at the end of this function
     local extmark = vim.api.nvim_buf_get_extmark_by_id(0, callback_namespace, id, {})
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
@@ -23,6 +23,169 @@ function key_callback(key)
         md.backspace()
     end
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
+end
+
+-- Iterates up or down to find the first occurence of a section marker.
+-- line_num is included in the search
+local function find_header_or_list(line_num)
+    local line_count = vim.api.nvim_buf_line_count(0)
+
+    if line_num < 1 or line_num > line_count then
+        -- Tried to find above top or below bottom
+        -- Returns nil as if it didn't find anything
+        return nil
+    end
+
+    -- Special logic to check if the line below is a setex marker, meaning the line passed
+    -- is the top of the header
+    local line = vim.fn.getline(line_num)
+    local setex_line = vim.fn.getline(line_num + 1)
+    if setex_line:match(regex.setex_equals_header) and not line:match("^$") then
+        return {line = line_num, type = "setex_equals_header"}
+    elseif setex_line:match(regex.setex_line_header) and not line:match("^$") then
+        return {line = line_num, type = "setex_line_header"}
+    end
+
+    while line_num > 0 and line_num <= line_count do
+        local line = vim.fn.getline(line_num)
+        for name, pattern in pairs(regex) do
+            if line:match(pattern) then
+                if (name == "setex_equals_header" or name == "setex_line_header") then
+                    if vim.fn.getline(line_num-1):match("^$") then
+                        -- Not actually a setex header without a title
+                        break
+                    end
+                    line_num = line_num - 1
+                end
+
+                return {line = line_num, type = name}
+            end
+        end
+
+        line_num = line_num - 1
+    end
+end
+
+-- Given a the line of a bullet, returns a table of properties of the bullet.
+local function parse_bullet(bullet_line)
+    local line = vim.fn.getline(bullet_line)
+    local bullet = {}
+
+    -- Find what sort of bullet it is (*,-,+ ordered)
+    bullet.indent, bullet.marker, bullet.trailing_indent, bullet.text = line:match("^(%s*)([%*%-%+])(%s+)(.*)")
+    if not bullet.marker then
+        -- Check ordered
+        bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s+)(.*)")
+        bullet.type = "ordered_list"
+    else
+        bullet.delimiter = ""
+        bullet.type = "unordered_list"
+    end
+
+    -- Didn't find marker at all, must not be a bullet
+    if not bullet.marker then
+        return nil
+    end
+
+    -- Test for checkbox, too hard to do above
+    local checkbox = bullet.text:match("^%[([%sX])%]")
+    if checkbox then
+        bullet.checkbox = {}
+        bullet.checkbox.checked = checkbox == "X" and true or false
+        bullet.text = bullet.text:sub(5)
+    end
+    
+    bullet.indent = #bullet.indent
+    bullet.trailing_indent = #bullet.trailing_indent
+    bullet.start = bullet_line
+
+    -- Iterate down to find bottom of bullet and if it has children
+
+    local line_count = vim.api.nvim_buf_line_count(0)
+    local iter = bullet.start + 1 -- start one past end if at last line [1]
+    while true do 
+        local indent = vim.fn.indent(iter)
+
+        -- Test for children
+        -- test for having children and larger indent first to prevent regex
+        if not bullet.has_children and indent >= bullet.indent + vim.o.shiftwidth then
+            local child = vim.fn.getline(iter)
+            if child:match(regex.unordered_list) or child:match(regex.ordered_list) then
+                bullet.has_children = true
+            end
+        end
+
+        -- Test for end of bullet
+        if indent <= bullet.indent then
+            bullet.stop = iter - 1
+            break
+        end
+
+        -- Last line will always be end
+        if iter >= line_count then
+            -- [1] checked for being above here
+            bullet.stop = line_count
+            break
+        end
+
+        iter = iter + 1
+    end
+
+    -- Try to find parent bullet
+    -- Might be too intensive to do the recursive if too deep in the tree
+    if bullet.indent > 0 then
+        local section = find_header_or_list(bullet.start - 1)
+        while true do
+            if not section.type:match("list") then 
+                -- Can't find parent even though there is supposed to be one
+                break
+            elseif vim.fn.indent(section.line) < bullet.indent then
+                -- Found parent at lower indentation level
+                bullet.parent = parse_bullet(section.line)
+                break
+            else
+                -- Sibling bullet, find next bullet
+                section = find_header_or_list(section.line - 1)
+            end
+        end
+    end
+    return bullet
+end
+
+local function parse_header(line_num)
+    local line = vim.fn.getline(line_num)
+    local setex_line = vim.fn.getline(line_num + 1)
+    local header = {}
+
+    local iter
+    if line:match(regex.atx_header) then
+        header.start = line_num
+        iter = line_num + 1
+    elseif setex_line:match(regex.setex_line_header) or setex_line:match(regex.setex_equals_header) then
+        header.start = line_num
+        iter = line_num + 2
+    else
+        -- Not a header
+        return nil
+    end
+
+    -- iterate down to find bottom
+    local line_count = vim.api.nvim_buf_line_count(0)
+    while true do
+        local line = vim.fn.getline(iter)
+        if line:match(regex.atx_header) then
+            header.stop = iter - 1
+            break
+        elseif line:match(regex.setex_equals_header) or line:match(regex.setex_line_header) then
+            header.stop = iter - 2
+            break
+        elseif iter == line_count then
+            header.stop = iter
+            break
+        end
+        iter = iter + 1
+    end
+    return header
 end
 
 -- Pressing backspace in insert mode calls this function.
@@ -347,46 +510,6 @@ function md.control_k(in_normal_mode)
     end
 
 end
--- Iterates up or down to find the first occurence of a section marker.
--- line_num is included in the search
-function find_header_or_list(line_num)
-    local line_count = vim.api.nvim_buf_line_count(0)
-
-    if line_num < 1 or line_num > line_count then
-        -- Tried to find above top or below bottom
-        -- Returns nil as if it didn't find anything
-        return nil
-    end
-
-    -- Special logic to check if the line below is a setex marker, meaning the line passed
-    -- is the top of the header
-    local line = vim.fn.getline(line_num)
-    local setex_line = vim.fn.getline(line_num + 1)
-    if setex_line:match(regex.setex_equals_header) and not line:match("^$") then
-        return {line = line_num, type = "setex_equals_header"}
-    elseif setex_line:match(regex.setex_line_header) and not line:match("^$") then
-        return {line = line_num, type = "setex_line_header"}
-    end
-
-    while line_num > 0 and line_num <= line_count do
-        local line = vim.fn.getline(line_num)
-        for name, pattern in pairs(regex) do
-            if line:match(pattern) then
-                if (name == "setex_equals_header" or name == "setex_line_header") then
-                    if vim.fn.getline(line_num-1):match("^$") then
-                        -- Not actually a setex header without a title
-                        break
-                    end
-                    line_num = line_num - 1
-                end
-
-                return {line = line_num, type = name}
-            end
-        end
-
-        line_num = line_num - 1
-    end
-end
 
 -- Given the line number of one of the bullets in a list,
 -- returns a table with the position of all the siblings in the list
@@ -429,128 +552,6 @@ end
 --
 --    return list
 --end
-
--- Given a the line of a bullet, returns a table of properties of the bullet.
-function parse_bullet(bullet_line)
-    local line = vim.fn.getline(bullet_line)
-    local bullet = {}
-
-    -- Find what sort of bullet it is (*,-,+ ordered)
-    bullet.indent, bullet.marker, bullet.trailing_indent, bullet.text = line:match("^(%s*)([%*%-%+])(%s+)(.*)")
-    if not bullet.marker then
-        -- Check ordered
-        bullet.indent, bullet.marker, bullet.delimiter, bullet.trailing_indent, bullet.text = line:match("^(%s*)(%d+)([%)%.])(%s+)(.*)")
-        bullet.type = "ordered_list"
-    else
-        bullet.delimiter = ""
-        bullet.type = "unordered_list"
-    end
-
-    -- Didn't find marker at all, must not be a bullet
-    if not bullet.marker then
-        return nil
-    end
-
-    -- Test for checkbox, too hard to do above
-    local checkbox = bullet.text:match("^%[([%sX])%]")
-    if checkbox then
-        bullet.checkbox = {}
-        bullet.checkbox.checked = checkbox == "X" and true or false
-        bullet.text = bullet.text:sub(5)
-    end
-    
-    bullet.indent = #bullet.indent
-    bullet.trailing_indent = #bullet.trailing_indent
-    bullet.start = bullet_line
-
-    -- Iterate down to find bottom of bullet and if it has children
-
-    local line_count = vim.api.nvim_buf_line_count(0)
-    local iter = bullet.start + 1 -- start one past end if at last line [1]
-    while true do 
-        local indent = vim.fn.indent(iter)
-
-        -- Test for children
-        -- test for having children and larger indent first to prevent regex
-        if not bullet.has_children and indent >= bullet.indent + vim.o.shiftwidth then
-            local child = vim.fn.getline(iter)
-            if child:match(regex.unordered_list) or child:match(regex.ordered_list) then
-                bullet.has_children = true
-            end
-        end
-
-        -- Test for end of bullet
-        if indent <= bullet.indent then
-            bullet.stop = iter - 1
-            break
-        end
-
-        -- Last line will always be end
-        if iter >= line_count then
-            -- [1] checked for being above here
-            bullet.stop = line_count
-            break
-        end
-
-        iter = iter + 1
-    end
-
-    -- Try to find parent bullet
-    -- Might be too intensive to do the recursive if too deep in the tree
-    if bullet.indent > 0 then
-        local section = find_header_or_list(bullet.start - 1)
-        while true do
-            if not section.type:match("list") then 
-                -- Can't find parent even though there is supposed to be one
-                break
-            elseif vim.fn.indent(section.line) < bullet.indent then
-                -- Found parent at lower indentation level
-                bullet.parent = parse_bullet(section.line)
-                break
-            else
-                -- Sibling bullet, find next bullet
-                section = find_header_or_list(section.line - 1)
-            end
-        end
-    end
-    return bullet
-end
-
-function parse_header(line_num)
-    local line = vim.fn.getline(line_num)
-    local setex_line = vim.fn.getline(line_num + 1)
-    local header = {}
-
-    local iter
-    if line:match(regex.atx_header) then
-        header.start = line_num
-        iter = line_num + 1
-    elseif setex_line:match(regex.setex_line_header) or setex_line:match(regex.setex_equals_header) then
-        header.start = line_num
-        iter = line_num + 2
-    else
-        -- Not a header
-        return nil
-    end
-
-    -- iterate down to find bottom
-    local line_count = vim.api.nvim_buf_line_count(0)
-    while true do
-        local line = vim.fn.getline(iter)
-        if line:match(regex.atx_header) then
-            header.stop = iter - 1
-            break
-        elseif line:match(regex.setex_equals_header) or line:match(regex.setex_line_header) then
-            header.stop = iter - 2
-            break
-        elseif iter == line_count then
-            header.stop = iter
-            break
-        end
-        iter = iter + 1
-    end
-    return header
-end
 
 -- Pressing C-c calls this function
 -- Iterates through todo list for all list types
