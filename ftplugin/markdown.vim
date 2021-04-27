@@ -746,6 +746,7 @@ function! Foldtext_markdown()
     return line . ' ...' .  repeat(" ", winwidth(0))
 endfunction
 
+setlocal autowriteall
 setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
@@ -755,7 +756,7 @@ setlocal lazyredraw " <C-o> imaps make the statusline flicker without this
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
 imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
-imap <silent> <buffer> <TAB> <C-o>:lua require("markdown").insert_tab()<CR>
+imap <silent> <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
 nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
 imap <silent> <buffer> <C-k> <esc>:lua require("markdown").control_k()<CR>
 nmap <silent> <buffer> <C-k> :lua require("markdown").control_k("dont_insert_if_nothing_under_cursor")<CR>

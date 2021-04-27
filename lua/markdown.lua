@@ -66,6 +66,33 @@ local function find_header_or_list(line_num)
     end
 end
 
+local function find_if_cursor_in_link(cursor)
+    local line = vim.fn.getline(cursor[1])
+    local column = cursor[2] + 1
+    local link_start, link_stop, link 
+    local start = 1
+    repeat
+        -- repeats until it finds a link the cursor is inside or ends as nil
+        link_start, link_stop, text, url = line:find("%[(.-)%]%((.-)%)", start)
+        if link_start then
+            start = link_stop + 1
+        end
+    until not link_start or (link_start <= column and link_stop >= column)
+
+
+    if link_start then
+       return {
+            link = "[" .. text .. "](" .. url .. ")",
+            start = link_start,
+            stop = link_stop,
+            text = text,
+            url = url
+        }
+    else
+        return nil
+    end
+end
+
 -- Given a the line of a bullet, returns a table of properties of the bullet.
 local function parse_bullet(bullet_line)
     local line = vim.fn.getline(bullet_line)
@@ -301,7 +328,7 @@ function md.newline(key)
             --    local incremented = vim.fn.getline(bullet_line):sub
         end
 
-        if #bullet.text == 0 then
+        if #bullet.text == 0 and (key == "return" or key == "o")  then
             -- the bullet is empty, remove it and start a new line below it
             vim.cmd("startinsert")
             vim.api.nvim_buf_set_lines(0, insert_line_num-1, insert_line_num, true, {"",""})
@@ -332,49 +359,34 @@ end
 -- Pressing tab in insert mode calls this function
 -- Removes auto-inserted bullet if the line is still empty
 function md.insert_tab()
-    local line_num = vim.fn.line('.')
+    local cursor = vim.api.nvim_win_get_cursor(0)
 
     -- Check if bullet
-    local bullet = parse_bullet(line_num)
+    local bullet = parse_bullet(cursor[1])
 
     -- Find if inside link
-    local line = vim.fn.getline('.')
-    local column = vim.api.nvim_win_get_cursor(0)[2] + 1
-    local link_start, link_stop, link 
-    local start = 1
-    repeat
-        -- repeats until it finds a link the cursor is inside or ends as nil
-        link_start, link_stop, link = line:find("(%[.-%]%(.-%))", start)
-        if link_start then
-            start = link_stop + 1
-        end
-    until not link_start or (link_start < column and link_stop >= column)
+    local link = find_if_cursor_in_link(cursor)
 
     if bullet and (#bullet.text == 0 or bullet.text:match("%s*%[.%]")) then
         -- empty bullet
         local line = string.rep(" ", bullet.indent + vim.o.shiftwidth) 
         local checkbox = bullet.checkbox and "[ ] " or ""
         line = line .. bullet.marker .. bullet.delimiter .. string.rep(" ", bullet.trailing_indent) .. checkbox
-        vim.api.nvim_buf_set_lines(0, line_num - 1, line_num, true, {line}) 
-        vim.api.nvim_win_set_cursor(0,{line_num, 1000000})
-    elseif link then
-        -- Need to find the position of the cursor in the link
-        --local pos1, pos2 = 0, 0
-        --local line = vim.fn.getline(".")
-        --repeat
-        --    start, stop = line:find(link,0,true)
-        --    break
-        --until stop > column
-
-        local relative_postition = column - link_start + 1
-        _, bracket = link:find("%[%]")
-        parenthesis = link:find("%(%)")
-        if bracket and relative_postition > bracket then
+        vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1], true, {line}) 
+        vim.api.nvim_win_set_cursor(0,{cursor[1], 1000000})
+    elseif link and cursor[2] >= link.start and cursor[2] <= link.stop then
+        --error(vim.inspect({cursor,link}))
+        local relative_position = cursor[2] - link.start + 1
+        local _, end_bracket = link.link:find("%[%]")
+        local start_parenthesis = link.link:find("%(%)")
+        --error(vim.inspect({end_bracket, relative_position}))
+        if end_bracket and relative_position > end_bracket then
             -- Switch to empty brackets from parentheses
-            vim.api.nvim_win_set_cursor(0, {line_num, start})
-        elseif parenthesis and relative_postition < parenthesis then
+            vim.api.nvim_win_set_cursor(0, {cursor[1], link.start})
+        elseif start_parenthesis and relative_position < start_parenthesis then
+            --error(vim.inspect(link))
             -- Switch to empty parentheses from brackets
-            vim.api.nvim_win_set_cursor(0, {line_num, link_stop-1})
+            vim.api.nvim_win_set_cursor(0, {cursor[1], link.stop-1})
         else
             -- go to end
             --if link_stop == #line then
@@ -382,7 +394,7 @@ function md.insert_tab()
             --    vim.cmd("startinsert!")
             --    vim.api.nvim_feedkeys(" ", "n", true)
             --else
-                vim.api.nvim_win_set_cursor(0, {line_num, link_stop})
+                vim.api.nvim_win_set_cursor(0, {cursor[1], link.stop})
             --end
         end
     else
@@ -449,42 +461,22 @@ end
 -- Pressing return in normal mode will call this function.
 -- Follows links
 function md._return()
-    -- Find if inside link
-    local line = vim.fn.getline('.')
-    local column = vim.api.nvim_win_get_cursor(0)[2] + 1
-    local link_start, link_stop, link 
-    local start = 1
-    repeat
-        -- repeats until it finds a link the cursor is inside or ends as nil
-        link_start, link_stop, link = line:find("%[.-%]%((.-)%)", start)
-        if link_start then
-            start = link_stop + 1
-        end
-    until not link_start or (link_start < column and link_stop >= column)
-
-    if link and #link > 0 then
-        if vim.fn.filereadable(link) == 1 then
-            -- a file
-            -- TODO: It should be possible to enter a file where the path exists but the file
-            -- hasn't been created yet.
-            vim.cmd("e " .. link)
+    local word = vim.fn.expand("<cWORD>")
+    local link = find_if_cursor_in_link(vim.api.nvim_win_get_cursor(0))
+    if link.url then
+        if link:match("^https?://") then
+            -- a link
+            vim.call("netrw#BrowseX", link.url, 0)
         elseif link:match("^#") then
             -- an anchor
-            vim.fn.search("^#*"..link)
+            vim.fn.search("^#*"..link.url)
         else
-            -- assume it's a link
-            if not link:match("^https?://") then
-                link = "https://" .. link
-            end
-            vim.call("netrw#BrowseX", link, 0)
+            -- a file
+            vim.cmd("e " .. link.url)
         end
-    elseif vim.fn.expand("<cWORD>"):match("/") then
+    elseif word:match("^https?://") then
         -- Bare url i.e without link syntax
-        local url = vim.fn.expand("<cWORD>")
-        if not url:match("^https?://") then
-            url = "https://" .. url
-        end
-        vim.call("netrw#BrowseX", url, 0)
+        vim.call("netrw#BrowseX", word, 0)
     end
 end
 
@@ -493,6 +485,12 @@ end
 -- If no word is under the cursor, then insert the link syntax
 -- as long as it is not currently in normal mode, flagged by the argument.
 function md.control_k(in_normal_mode)
+    local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
+    local line = vim.fn.getline(".")
+    if line:sub(cursor,cursor) == " " then
+        return
+    end
+
     local word = vim.fn.expand("<cWORD>")
     if word:match("/") or vim.fn.filereadable(word) == 1 then
         -- a link or file
