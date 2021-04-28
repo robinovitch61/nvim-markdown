@@ -227,14 +227,18 @@ function md.backspace()
     local ordered = line:match("^%s*%d+[%)%.]%s?%[?%s?%]?%s*$")
     local unordered = line:match("^%s*[%*%-%+]%s?%[?%s?%]?%s*$")
 
+    -- The bullet above to extract indentation level
+    local bullet = parse_bullet(cursor[1] - 1)
+    -- Need to append a letter since the backspace is handled normally after this function
+    local newline = string.rep(" ", bullet.indent + #bullet.marker + bullet.trailing_indent) .. "a"
+
     if ordered then
-        -- Remove list marker, but keep spacing
-        line = string.rep(" ", #line) .. "r" -- needed because the backspace keystroke is handeled normally after the function
-        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        -- Need to append a letter since the backspace is handled normally after this function
+        newline = newline .. " " -- for delimiter 
+        vim.fn.setline(".", newline)
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     elseif unordered then
-        line = string.rep(" ", #line) .. "r"
-        vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
+        vim.fn.setline(".", newline)
         vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
     -- TODO: reorder list
@@ -461,6 +465,13 @@ end
 -- Pressing return in normal mode will call this function.
 -- Follows links
 function md._return()
+    local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
+    local line = vim.fn.getline(".")
+    if line:sub(cursor,cursor) == " " then
+        -- cWORD returns a word even when cursor is at a space
+        return
+    end
+
     local word = vim.fn.expand("<cWORD>")
     local link = find_if_cursor_in_link(vim.api.nvim_win_get_cursor(0))
     if link.url then
@@ -488,6 +499,7 @@ function md.control_k(in_normal_mode)
     local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
     local line = vim.fn.getline(".")
     if line:sub(cursor,cursor) == " " then
+        -- cWORD returns a word even when cursor is at a space
         return
     end
 
