@@ -728,17 +728,14 @@ function! s:MarkdownClearSyntaxVariables()
 endfunction
 
 augroup Mkd
+    autocmd! * <buffer>
+    autocmd BufWinLeave <buffer> mkview
+    autocmd BufWinEnter <buffer> silent! loadview
     autocmd BufWinEnter <buffer> call s:MarkdownRefreshSyntax(1)
     autocmd BufUnload <buffer> call s:MarkdownClearSyntaxVariables()
     autocmd BufWritePost <buffer> call s:MarkdownRefreshSyntax(0)
     autocmd InsertEnter,InsertLeave <buffer> call s:MarkdownRefreshSyntax(0)
     autocmd CursorHold,CursorHoldI <buffer> call s:MarkdownRefreshSyntax(0)
-augroup END
-
-augroup remember_folds
-    autocmd!
-    autocmd BufWinLeave <buffer> mkview
-    autocmd BufWinEnter <buffer> silent! loadview
 augroup END
 
 function! Foldtext_markdown()
@@ -754,13 +751,14 @@ setlocal foldtext=Foldtext_markdown()
 setlocal lazyredraw " <C-o> imaps make the statusline flicker without this
 
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
-imap <silent> <buffer> <C-c> <C-o>:lua require("markdown").toggle_checkbox()<CR>
+imap <silent> <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
 nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
 imap <silent> <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
 nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
-imap <silent> <buffer> <C-k> <esc>:lua require("markdown").control_k()<CR>
-nmap <silent> <buffer> <C-k> :lua require("markdown").control_k("dont_insert_if_nothing_under_cursor")<CR>
+imap <silent> <buffer> <C-k> <cmd>lua require("markdown").control_k("i")<CR>
+nmap <silent> <buffer> <C-k> :lua require("markdown").control_k("n")<CR>
+vmap <silent> <buffer> <C-k> :lua require("markdown").control_k("v")<CR>
 
-imap <silent> <buffer> <CR> <C-o>:lua require("markdown").newline("return")<CR>
+imap <silent> <buffer> <CR> <cmd>:lua require("markdown").newline("return")<CR>
 nmap <silent> <buffer> o :lua require("markdown").newline("o")<CR>
 nmap <silent> <buffer> O :lua require("markdown").newline("O")<CR>

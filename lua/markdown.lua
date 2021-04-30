@@ -25,6 +25,8 @@ local function key_callback(key)
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
 end
 
+vim.register_keystroke_callback(key_callback)
+
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search
 local function find_header_or_list(line_num)
@@ -224,79 +226,102 @@ function md.backspace()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = vim.api.nvim_get_current_line()
 
-    local ordered = line:match("^%s*%d+[%)%.]%s?%[?%s?%]?%s*$")
-    local unordered = line:match("^%s*[%*%-%+]%s?%[?%s?%]?%s*$")
-
     -- The bullet above to extract indentation level
     local bullet = parse_bullet(cursor[1] - 1)
-    -- Need to append a letter since the backspace is handled normally after this function
-    local newline = string.rep(" ", bullet.indent + #bullet.marker + bullet.trailing_indent) .. "a"
+    local indent_length = bullet.indent + #bullet.marker + bullet.trailing_indent + #bullet.delimiter
+    if bullet.checkbox then
+        indent_length = indent_length + 4
+    end
 
-    if ordered then
-        -- Need to append a letter since the backspace is handled normally after this function
-        newline = newline .. " " -- for delimiter 
-        vim.fn.setline(".", newline)
-        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
-    elseif unordered then
-        vim.fn.setline(".", newline)
-        vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
+    -- Need to append a letter since the backspace is handled normally after this function
+    local newline = string.rep(" ", indent_length) .. "a"
+
+    vim.fn.setline(".", newline)
+    vim.api.nvim_win_set_cursor(0, {cursor[1], 10000})
     --elseif vim.fn.indent('.') == 0 and vim.fn.getline(vim.fn.line('.') + 1):match(regex.ordered_list) then
     -- TODO: reorder list
-    end
 end
 
-
-vim.register_keystroke_callback(key_callback)
 
 -- Responsible for auto-inserting new bullet points when pressing
 -- Return, o or O
 function md.newline(key)
-    -- First find which line is above the newly inserted line to-be
-    local bullet
-    local insert_line_num
+    -- First find which line will be above and below the newly inserted line
+    local bullet_above, bullet_below
+    local insert_line
     local folded
     if key == "O" then
-        if vim.fn.foldclosed(".") > 0 then
-            insert_line_num = vim.fn.foldclosed(".") - 1
-            bullet = parse_bullet(vim.fn.foldclosed("."))
+        local line = vim.fn.line(".")
+        if vim.fn.foldclosed(line - 1) > 0 then
+            insert_line = vim.fn.foldclosed(line - 1)
             folded = true
         else
-            insert_line_num = vim.fn.line(".") - 1
-            bullet = parse_bullet(vim.fn.line("."))
+            insert_line = line - 1
         end
     elseif key == "o" then
         if vim.fn.foldclosed(".") > 0 then
-            insert_line_num = vim.fn.foldclosedend(".")
-             -- XXX: bullet must be parsed at beginning of fold explicitly because when folding
-             -- the cursor is left behind inside the fold, even though it looks as if it is at the beginning.
-            bullet = parse_bullet(vim.fn.foldclosed("."))
+            insert_line = vim.fn.foldclosedend(".")
             folded = true
         else
-            insert_line_num = vim.fn.line(".")
-            bullet = parse_bullet(vim.fn.line("."))
+            insert_line = vim.fn.line(".")
         end
     elseif key == "return" then
-        key = "<CR>" -- Can't pass directly to mapping?
+        key = "<CR>" -- Can't pass "return" directly to the mapping?
         -- if not at EOL, normal Return
         local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
         local line = vim.api.nvim_get_current_line()
 
         if cursor < #line then
-            bullet = nil
+            key = vim.api.nvim_replace_termcodes(key, true, false, true)
+            vim.api.nvim_feedkeys(key, "n", true)
+            return
         else
-            insert_line_num = vim.fn.line(".")
-            bullet = parse_bullet(insert_line_num)
+            insert_line = vim.fn.line(".")
         end
+        bullet_above = parse_bullet(insert_line)
     else
         error(string.format("%s is not a valid key", key))
     end
 
-    if bullet and folded then
-        -- is a folded bullet
+
+    if folded then
+        bullet_above = parse_bullet(vim.fn.foldclosed(insert_line))
+        bullet_below = parse_bullet(insert_line + 1)
+    else
+        bullet_above = parse_bullet(insert_line)
+        bullet_below = parse_bullet(insert_line + 1)
+    end
+
+    if bullet_above then
+        -- remove bullet and insert new line if the bullet is empty
+        if #bullet_above.text == 0 and (key == "return" or key == "o")  then
+            -- the bullet is empty, remove it and start a new line below it
+            vim.cmd("startinsert")
+            vim.api.nvim_buf_set_lines(0, insert_line-1, insert_line, true, {"",""})
+            vim.api.nvim_win_set_cursor(0,{insert_line+1, 0})
+            return
+        end
+
+        -- Use the properties of the bullet below if its indent is higher.
+        local bullet
+        if bullet_below and bullet_below.indent > bullet_above.indent then
+            bullet = bullet_below
+        else
+            bullet = bullet_above
+        end
+
         local indent = string.rep(" ", bullet.indent)
-        local trailing_indent = string.rep(" ", bullet.trailing_indent)
         local marker = bullet.marker
-        local checkbox = bullet.checkbox and "[ ] " or ""
+        local delimiter = bullet.delimiter
+        local trailing_indent = string.rep(" ", bullet.trailing_indent)
+
+        -- Use checkbox of the above bullet if they are equally indented
+        local checkbox
+        if bullet_above and bullet_below and bullet_above.indent == bullet_below.indent then
+            checkbox = bullet_above.checkbox and "[ ] " or ""
+        else
+            checkbox = bullet.checkbox and "[ ] " or ""
+        end
 
         if tonumber(marker) then
             marker = marker + 1
@@ -306,53 +331,16 @@ function md.newline(key)
             --    local incremented = vim.fn.getline(bullet_line):sub
         end
 
-        local new_line = indent .. marker .. bullet.delimiter .. trailing_indent .. checkbox
-        vim.cmd("startinsert") -- enter insert
-        vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
-        vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
+        local new_line = indent .. marker .. delimiter .. trailing_indent .. checkbox
+        vim.fn.append(insert_line, new_line) 
+        vim.cmd("startinsert")
+        vim.api.nvim_win_set_cursor(0,{insert_line+1, 1000000})
         id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
     elseif folded then
         -- is a folded header
-        local new_line = ""
-        vim.cmd("startinsert") -- enter insert
-        vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
-        vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
-    elseif bullet then
-        local bullet_below = parse_bullet(insert_line_num + 1)
-        local indent = string.rep(" ", bullet.indent)
-        local trailing_indent = string.rep(" ", bullet.trailing_indent)
-        local marker = bullet.marker
-        local checkbox = bullet.checkbox and "[ ] " or ""
-
-        if tonumber(marker) then
-            marker = marker + 1
-            -- TODO: reoder list if there are other bullets below
-            --other_bullets = parse_list(bullet.start)
-            --for _, bullet_line in pairs(other_bullets) do
-            --    local incremented = vim.fn.getline(bullet_line):sub
-        end
-
-        if #bullet.text == 0 and (key == "return" or key == "o")  then
-            -- the bullet is empty, remove it and start a new line below it
-            vim.cmd("startinsert")
-            vim.api.nvim_buf_set_lines(0, insert_line_num-1, insert_line_num, true, {"",""})
-            vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 0})
-        else
-            -- Add a new bullet
-            local new_line
-            if bullet_below and bullet_below.indent > bullet.indent then
-                -- if there is a bullet below, it's assumed the user wants another child bullet
-                new_line = string.rep(" ", bullet_below.indent)
-            else
-                new_line = indent
-            end
-
-            new_line = new_line .. marker .. bullet.delimiter .. trailing_indent .. checkbox
-            vim.cmd("startinsert") -- enter insert
-            vim.api.nvim_buf_set_lines(0, insert_line_num, insert_line_num, true, {new_line})
-            vim.api.nvim_win_set_cursor(0,{insert_line_num+1, 1000000})
-            id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
-        end
+        vim.cmd("startinsert")
+        vim.fn.append(insert_line, "")
+        vim.api.nvim_win_set_cursor(0,{insert_line+1, 0})
     else
         -- Normal key
         key = vim.api.nvim_replace_termcodes(key, true, false, true)
@@ -447,8 +435,10 @@ function md.normal_tab()
                 fold_stop = bullet.parent.stop
             end
 
+            --error(vim.inspect({fold_start, fold_stop, bullet}))
             -- if fold_start is still nil, it's a bullet that can't be folded
             if fold_start then
+                vim.cmd("silent! norm zd") -- delete any remenant folds
                 vim.cmd(string.format("%d,%dfold",fold_start, fold_stop))
                 break
             end
@@ -495,30 +485,65 @@ end
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.
 -- If no word is under the cursor, then insert the link syntax
 -- as long as it is not currently in normal mode, flagged by the argument.
-function md.control_k(in_normal_mode)
-    local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
-    local line = vim.fn.getline(".")
-    if line:sub(cursor,cursor) == " " then
-        -- cWORD returns a word even when cursor is at a space
-        return
-    end
+function md.control_k(mode)
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    if mode == "n" or mode == "i" then
+        if mode == "n" then
+            local line = vim.fn.getline(".")
+            local column = cursor[2] + 1
+            if line:sub(column,column) == " " then
+                -- cWORD returns the word in front even when cursor is at a space
+                return
+            end
+        elseif mode == "i" then
+            -- Move the cursor to where it would be in normal mode
+            vim.fn.setpos(".", {0, cursor[1], cursor[2], 0})
+        end
 
-    local word = vim.fn.expand("<cWORD>")
-    if word:match("/") or vim.fn.filereadable(word) == 1 then
-        -- a link or file
-        vim.cmd('norm "_ciW[](a' .. word .. ')Bl')
-        vim.cmd("startinsert")
-    elseif #word > 0 then
-        -- a word
-        word = vim.fn.expand("<cword>") -- probably unnecessary, but makes sure to only use the last word in case it is in contact with something up-front
-        vim.cmd('norm "_ciw[' .. word .. ']()')
-        vim.cmd("startinsert")
-    elseif not in_normal_mode then
-        -- just insert link syntax
-        vim.cmd("norm a[]()Bl")
+        local word = vim.fn.expand("<cWORD>")
+        if word:match("/") or vim.fn.filereadable(word) == 1 then
+            -- a link or file
+            vim.cmd('norm "_ciW[](a' .. word .. ')Bl')
+            vim.cmd("startinsert")
+        elseif #word > 0 then
+            -- a word
+            word = vim.fn.expand("<cWORD>") -- probably unnecessary, but makes sure to only use the last word in case it is in contact with something up-front
+            vim.cmd('norm "_ciW[' .. word .. ']()')
+            vim.cmd("startinsert")
+        elseif mode == "i" then
+            -- just insert link syntax
+            vim.cmd("norm a[]()Bl")
+            vim.cmd("startinsert")
+        end
+    elseif mode == "v" then
+        local start = vim.fn.getpos("'<")
+        local stop = vim.fn.getpos("'>")
+
+        -- Don't do anything if the visual selection spans multiple lines
+        if start[2] ~= stop[2] then
+            return
+        else
+            start = start[3]
+            stop = stop[3]
+        end
+
+        local line = vim.fn.getline(".")
+        local selection = line:sub(start, stop)
+        local new_line
+        local new_cursor_pos
+        if selection:match("/") or vim.fn.filereadable(selection) == 1 then 
+            new_line = line:sub(1,start-1) .. "[]"
+            new_cursor_pos = #new_line
+            new_line = new_line .. "(" .. selection .. ")" .. line:sub(stop+1)
+        else
+            new_line = line:sub(1,start-1) .. "[" .. selection .. "]()"
+            new_cursor_pos = #new_line
+            new_line = new_line .. line:sub(stop+1)
+        end
+        vim.fn.setline(".", new_line)
+        vim.fn.setpos(".", {0, cursor[1], new_cursor_pos, 0})
         vim.cmd("startinsert")
     end
-
 end
 
 -- Given the line number of one of the bullets in a list,
