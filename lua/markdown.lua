@@ -438,13 +438,14 @@ function md.normal_tab()
             --error(vim.inspect({fold_start, fold_stop, bullet}))
             -- if fold_start is still nil, it's a bullet that can't be folded
             if fold_start then
-                vim.cmd("silent! norm zd") -- delete any remenant folds
+                vim.cmd("silent! norm zd") -- delete any remnant folds
                 vim.cmd(string.format("%d,%dfold",fold_start, fold_stop))
                 break
             end
         elseif section.type:match("header") then
             -- if header, fold it entire thing
             local header = parse_header(section.line)
+            vim.cmd("silent! norm zd") -- delete any remnant folds
             vim.cmd(string.format("%d,%dfold", header.start, header.stop))
             break
         end
