@@ -748,7 +748,6 @@ setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
 setlocal foldtext=Foldtext_markdown()
-setlocal lazyredraw " <C-o> imaps make the statusline flicker without this
 
 nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
 imap <silent> <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
