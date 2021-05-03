@@ -755,7 +755,6 @@ nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
 imap <silent> <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
 nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
 imap <silent> <buffer> <C-k> <cmd>lua require("markdown").control_k("i")<CR>
-nmap <silent> <buffer> <C-k> :lua require("markdown").control_k("n")<CR>
 vmap <silent> <buffer> <C-k> :lua require("markdown").control_k("v")<CR>
 
 imap <silent> <buffer> <CR> <cmd>:lua require("markdown").newline("return")<CR>
