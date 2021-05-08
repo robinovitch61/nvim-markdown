@@ -750,14 +750,14 @@ setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
 setlocal foldtext=Foldtext_markdown()
 
-nmap <silent> <buffer> <C-c> :lua require("markdown").toggle_checkbox()<CR>
-imap <silent> <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
-nmap <silent> <buffer> <TAB> :lua require("markdown").normal_tab()<CR>
-imap <silent> <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
-nmap <silent> <buffer> <CR> :lua require("markdown")._return()<CR>
-imap <silent> <buffer> <C-k> <cmd>lua require("markdown").control_k("i")<CR>
-vmap <silent> <buffer> <C-k> :lua require("markdown").control_k("v")<CR>
+nmap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
+imap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
+nmap <buffer> <TAB> <cmd>lua require("markdown").normal_tab()<CR>
+imap <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
+nmap <buffer> <CR> <cmd>lua require("markdown")._return()<CR>
+imap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
+vmap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
 
-imap <silent> <buffer> <CR> <cmd>:lua require("markdown").newline("return")<CR>
-nmap <silent> <buffer> o :lua require("markdown").newline("o")<CR>
-nmap <silent> <buffer> O :lua require("markdown").newline("O")<CR>
+imap <buffer> <CR> <cmd>lua require("markdown").newline("return")<CR>
+nmap <buffer> o <cmd>lua require("markdown").newline("o")<CR>
+nmap <buffer> O <cmd>lua require("markdown").newline("O")<CR>
