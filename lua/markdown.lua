@@ -68,11 +68,8 @@ local function find_header_or_list(line_num)
     end
 end
 
-local function find_link_under_cursor(cursor)
-    if not cursor then
-        cursor = vim.api.nvim_win_get_cursor(0)
-    end
-
+local function find_link_under_cursor()
+    local cursor = vim.api.nvim_win_get_cursor(0)
     local line = vim.fn.getline(cursor[1])
     local column = cursor[2] + 1
     local link_start, link_stop, link
@@ -99,11 +96,8 @@ local function find_link_under_cursor(cursor)
     end
 end
 
-local function find_word_under_cursor(cursor)
-    if not cursor then
-        cursor = vim.api.nvim_win_get_cursor(0)
-    end
-
+local function find_word_under_cursor()
+    local cursor = vim.api.nvim_win_get_cursor(0)
     local mode = vim.fn.mode(".")
     if mode:find("n") then
         -- normal mode is converted to 1 index while insert mode is
@@ -507,7 +501,7 @@ end
 -- Follows links
 function md._return()
     local word = find_word_under_cursor()
-    local link = find_link_under_cursor()
+    local link = find_link_under_cursor() -- matches []() links only
     if link.url then
         if link:match("^https?://") then
             -- a link
@@ -519,11 +513,12 @@ function md._return()
             -- a file
             vim.cmd("e " .. link.url)
         end
-    elseif word:match("^https?://") then
+    elseif word and word.text:match("^https?://") then
         -- Bare url i.e without link syntax
         vim.call("netrw#BrowseX", word, 0)
     end
 end
+
 
 -- This function is called when control-k is pressed
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.

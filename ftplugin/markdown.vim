@@ -752,9 +752,12 @@ setlocal foldtext=Foldtext_markdown()
 
 nmap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
 imap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
+
 nmap <buffer> <TAB> <cmd>lua require("markdown").normal_tab()<CR>
 imap <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
+
 nmap <buffer> <CR> <cmd>lua require("markdown")._return()<CR>
+
 imap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
 vmap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
 
