@@ -506,14 +506,7 @@ end
 -- Pressing return in normal mode will call this function.
 -- Follows links
 function md._return()
-    local cursor = vim.api.nvim_win_get_cursor(0)[2] + 1
-    local line = vim.fn.getline(".")
-    if line:sub(cursor,cursor) == " " then
-        -- cWORD returns a word even when cursor is at a space
-        return
-    end
-
-    local word = vim.fn.expand("<cWORD>")
+    local word = find_word_under_cursor()
     local link = find_link_under_cursor()
     if link.url then
         if link:match("^https?://") then
@@ -535,15 +528,13 @@ end
 -- This function is called when control-k is pressed
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.
 -- If no word is under the cursor, then insert the link syntax
--- as long as it is not currently in normal mode, flagged by the argument.
 function md.control_k()
     local line = vim.fn.getline(".")
     local cursor = vim.api.nvim_win_get_cursor(0)
     local mode = vim.fn.mode(".")
 
     local new_line, new_cursor_pos
-    if mode == "n" or mode == "i" or mode == "ic" then
-        --print(vim.inspect(vim.api.nvim_win_get_cursor(0)))
+    if mode == "i" or mode == "ic" then
         local word = find_word_under_cursor()
         if word and (word.text:match("/") or vim.fn.filereadable(word.text) == 1) then
             -- convert an url to a link
@@ -555,7 +546,7 @@ function md.control_k()
             new_line = line:sub(1,word.start-1) .. "[" .. word.text .. "]()"
             new_cursor_pos = #new_line
             new_line = new_line .. line:sub(word.stop+1)
-        elseif mode == "i" then
+        else
             -- just insert link syntax
             new_line = line:sub(1,cursor[2]) .. "[]"
             new_cursor_pos = #new_line
