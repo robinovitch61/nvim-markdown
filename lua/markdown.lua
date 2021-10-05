@@ -25,7 +25,7 @@ local function key_callback(key)
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
 end
 
-vim.register_keystroke_callback(key_callback)
+vim.on_key(key_callback)
 
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search

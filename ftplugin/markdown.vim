@@ -727,6 +727,7 @@ function! s:MarkdownClearSyntaxVariables()
     endif
 endfunction
 
+setlocal viewoptions=folds,cursor
 augroup Mkd
     autocmd! * <buffer>
     autocmd BufWinLeave <buffer> mkview!
@@ -743,7 +744,6 @@ function! Foldtext_markdown()
     return line . ' ...' .  repeat(" ", winwidth(0))
 endfunction
 
-setlocal viewoptions=folds,cursor
 setlocal autowriteall
 setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
