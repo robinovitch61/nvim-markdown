@@ -727,12 +727,15 @@ function! s:MarkdownClearSyntaxVariables()
     endif
 endfunction
 
-setlocal viewoptions=folds,cursor
 augroup Mkd
     autocmd! * <buffer>
     autocmd BufWinLeave <buffer> mkview!
     autocmd BufWinEnter <buffer> silent! loadview
     autocmd BufWinEnter <buffer> call s:MarkdownRefreshSyntax(1)
+    " workaround, even without options in viewoptions it still saves this
+    " so it needs to be reset every time so that someone who has set their own
+    " foldmethod(not manual) isn't stuck on it.
+    autocmd BufWinEnter <buffer> setlocal foldmethod=manual
     autocmd BufUnload <buffer> call s:MarkdownClearSyntaxVariables()
     autocmd BufWritePost <buffer> call s:MarkdownRefreshSyntax(0)
     autocmd InsertEnter,InsertLeave <buffer> call s:MarkdownRefreshSyntax(0)
@@ -748,6 +751,7 @@ setlocal autowriteall
 setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
+setlocal viewoptions=folds,cursor
 setlocal foldtext=Foldtext_markdown()
 
 nmap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>

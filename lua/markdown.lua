@@ -1,4 +1,4 @@
-local md = {}
+local M = {}
 
 local regex = {
     setex_line_header   = "^%-%-%-%-*",
@@ -8,7 +8,7 @@ local regex = {
     ordered_list        = "^%s*%d+[%)%.]",
 }
 
--- to make md.backspace only trigger after a new line has been created an extmark
+-- to make M.backspace only trigger after a new line has been created an extmark
 -- is placed and checked for
 -- TODO: This is a workaround. Another alternative is calling getchangelist() after
 --       every backspace, but that is uglier.
@@ -19,7 +19,7 @@ local function key_callback(key)
     local extmark = vim.api.nvim_buf_get_extmark_by_id(0, callback_namespace, id, {})
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
     if #extmark > 0 and key == backspace_term then
-        md.backspace()
+        M.backspace()
     end
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
 end
@@ -251,7 +251,7 @@ end
 
 -- Pressing backspace in insert mode calls this function.
 -- Removes auto-inserted list markers
-function md.backspace()
+function M.backspace()
 
     -- if beginning of line is list marker, delete it
     -- else normal backspace
@@ -287,7 +287,7 @@ end
 
 -- Responsible for auto-inserting new bullet points when pressing
 -- Return, o or O
-function md.newline(key)
+function M.newline(key)
     -- First find which line will be above and below the newly inserted line
     local bullet_above, bullet_below
     local insert_line
@@ -393,7 +393,7 @@ end
 
 -- Pressing tab in insert mode calls this function
 -- Removes auto-inserted bullet if the line is still empty
-function md.insert_tab()
+function M.insert_tab()
     local cursor = vim.api.nvim_win_get_cursor(0)
 
     -- Check if bullet
@@ -441,7 +441,7 @@ end
 
 -- Pressing tab in normal mode calls this function
 -- Folds by bullets if cursor at one, else folds by headers
-function md.normal_tab()
+function M.normal_tab()
     local line_num = vim.fn.line('.')
 
     -- Fold is closed, delete it and return
@@ -498,7 +498,7 @@ end
 
 -- Pressing return in normal mode will call this function.
 -- Follows links
-function md._return()
+function M._return()
     local word = find_word_under_cursor()
     local link = find_link_under_cursor() -- matches []() links only
     if link and link.url then
@@ -522,7 +522,7 @@ end
 -- This function is called when control-k is pressed
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.
 -- If no word is under the cursor, then insert the link syntax
-function md.control_k()
+function M.control_k()
     local line = vim.fn.getline(".")
     local cursor = vim.api.nvim_win_get_cursor(0)
     local mode = vim.fn.mode(".")
@@ -623,7 +623,7 @@ end
 -- Iterates through todo list for all list types
 -- From none -> unmarked -> marked - none
 -- TODO: visual selection, mark and unmark, not remove
-function md.toggle_checkbox()
+function M.toggle_checkbox()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = vim.api.nvim_get_current_line()
     local bullet = parse_bullet(cursor[1])
@@ -685,7 +685,7 @@ function md.toggle_checkbox()
     end
 end
 
---function md.visual_convert_to_link()
+--function M.visual_convert_to_link()
 --    local cursor = vim.api.nvim_win_get_cursor()
 --    local start = vim.api.nvim_buf_get_mark("<")
 --    local stop = vim.api.nvim_buf_get_mark(">")
@@ -709,7 +709,7 @@ end
 --    local cursor = vim.api.nvim_win_get_cursor(0)
 --    local line =
 --    vim.cmd("norm hviW")
---    md.visual_convert_to_link()
+--    M.visual_convert_to_link()
 --end
 
-return md
+return M
