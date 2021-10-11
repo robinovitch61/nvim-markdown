@@ -25,7 +25,7 @@ local function key_callback(key)
     vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
 end
 
-vim.register_keystroke_callback(key_callback)
+vim.on_key(key_callback)
 
 -- Iterates up or down to find the first occurence of a section marker.
 -- line_num is included in the search
@@ -92,7 +92,7 @@ local function find_link_under_cursor()
             url = url
         }
     else
-        return nil
+        return {}
     end
 end
 
@@ -101,7 +101,7 @@ local function find_word_under_cursor()
     local mode = vim.fn.mode(".")
     if mode:find("n") then
         -- normal mode is converted to 1 index while insert mode is
-        -- left as 0 index because it is more like the space between character
+        -- left as 0 index, this is because of how spaces are counted
         cursor[2] = cursor[2] + 1
     end
 
@@ -123,7 +123,7 @@ local function find_word_under_cursor()
             text = word,
         }
     else
-        return nil
+        return {}
     end
 end
 
@@ -513,9 +513,9 @@ function md._return()
             -- a file
             vim.cmd("e " .. link.url)
         end
-    elseif word and word.text:match("^https?://") then
+    elseif word.text:match("^https?://") then
         -- Bare url i.e without link syntax
-        vim.call("netrw#BrowseX", word, 0)
+        vim.call("netrw#BrowseX", word.text, 0)
     end
 end
 
