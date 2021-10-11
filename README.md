@@ -16,7 +16,7 @@ To install manually instead, see `:help plugin`
 
 * Syntax highlighting with optional concealment of links and text formatting.
 * Fold headers and lists by pressing `tab` in normal mode.
-* Insert checkboxes `[X]` by pressing `Control-c` in insert or normal mode.
+* Insert checkboxes `[X]` in lists by pressing `Control-c` in insert or normal mode.
 * Auto-inserts bullets on newline; can be removed again with `backspace` while preserving indentation, or `tab` to create a sub-list.
 * Create links `[link text](url)` by pressing `Control-k` in insert mode. If pressed in an url, or in a word, it will autofill the correct field. 
  `tab` can be used in insert mode to skip from one field to the next.

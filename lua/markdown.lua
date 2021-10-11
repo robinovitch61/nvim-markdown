@@ -637,7 +637,7 @@ function md.toggle_checkbox()
     if bullet.checkbox and not bullet.checkbox.checked then
         if #bullet.text == 0 then
             -- if there is no text the user probably wants to remove the checkbox
-            -- not returning, it will hit the if below, and get replaced again
+            -- since it's not returning here, it will hit the if below, and get replaced again
             line = line:gsub("%[%s%]","[X]")
             bullet.checkbox.checked = true
         else
