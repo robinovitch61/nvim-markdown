@@ -1,5 +1,4 @@
-local md = {
-}
+local md = {}
 
 local regex = {
     setex_line_header   = "^%-%-%-%-*",
@@ -92,7 +91,7 @@ local function find_link_under_cursor()
             url = url
         }
     else
-        return {}
+        return nil
     end
 end
 
@@ -123,7 +122,7 @@ local function find_word_under_cursor()
             text = word,
         }
     else
-        return {}
+        return nil
     end
 end
 
@@ -502,18 +501,18 @@ end
 function md._return()
     local word = find_word_under_cursor()
     local link = find_link_under_cursor() -- matches []() links only
-    if link.url then
-        if link:match("^https?://") then
+    if link and link.url then
+        if link.url:match("^https?://") then
             -- a link
             vim.call("netrw#BrowseX", link.url, 0)
-        elseif link:match("^#") then
+        elseif link.url:match("^#") then
             -- an anchor
             vim.fn.search("^#*"..link.url)
         else
             -- a file
             vim.cmd("e " .. link.url)
         end
-    elseif word.text:match("^https?://") then
+    elseif word and word.text:match("^https?://") then
         -- Bare url i.e without link syntax
         vim.call("netrw#BrowseX", word.text, 0)
     end
