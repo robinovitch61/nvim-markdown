@@ -747,7 +747,6 @@ function! Foldtext_markdown()
     return line . ' ...' .  repeat(" ", winwidth(0))
 endfunction
 
-setlocal autowriteall
 setlocal comments=b:> " blockquote
 setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
