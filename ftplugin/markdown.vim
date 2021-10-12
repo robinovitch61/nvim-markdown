@@ -375,6 +375,26 @@ function! s:Toc(...)
     endfor
     setlocal nomodified
     setlocal nomodifiable
+    syn match Level0 '^[^\s].*$'
+    syn match Level1 '^\s\{2\}.*$'
+    syn match Level2 '^\s\{4\}.*$'
+    syn match Level3 '^\s\{6\}.*$'
+    syn match Level4 '^\s\{8\}.*$'
+    syn match Level5 '^\s\{10\}.*$'
+    syn match Level6 '^\s\{12\}.*$'
+    syn match Level7 '^\s\{14\}.*$'
+    syn match Level8 '^\s\{15\}.*$'
+    syn match Level9 '^\s\{16\}.*$'
+    hi def link Level0 Title
+    hi def link Level1 Statement
+    hi def link Level2 Type
+    hi def link Level3 String
+    hi def link Level4 Identifier
+    hi def link Level5 Normal
+    hi def link Level6 Normal
+    hi def link Level7 Normal
+    hi def link Level8 Normal
+    hi def link Level9 Normal
     execute 'normal! ' . l:cursor_header . 'G'
 endfunction
 
