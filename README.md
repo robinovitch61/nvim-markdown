@@ -151,7 +151,6 @@ The following requires `:filetype plugin on`.
 - `:Toc`: create a quickfix vertical window navigable table of contents with the headers.
   Hit `<Enter>` on a line to jump to the corresponding line of the markdown file.
 - `:Toch`: Same as `:Toc` but in an horizontal window.
-- `:Toct`: Same as `:Toc` but in a new tab.
 - `:Tocv`: Same as `:Toc` for symmetry with `:Toch` and `:Tocv`.
 - `:InsertToc`: Insert table of contents at the current line.
 

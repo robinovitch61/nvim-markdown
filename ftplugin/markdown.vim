@@ -362,8 +362,6 @@ function! s:Toc(...)
         else
             execute 'vertical resize ' . (&columns/2)
         endif
-    elseif l:window_type ==# 'tab'
-        tab lopen
     else
         lopen
     endif
@@ -644,7 +642,6 @@ command! -buffer -range=% SetexToAtx call s:SetexToAtx(<line1>, <line2>)
 command! -buffer Toc call s:Toc()
 command! -buffer Toch call s:Toc('horizontal')
 command! -buffer Tocv call s:Toc('vertical')
-command! -buffer Toct call s:Toc('tab')
 command! -buffer -nargs=? InsertToc call s:InsertToc('bullets', <args>)
 command! -buffer -nargs=? InsertNToc call s:InsertToc('numbers', <args>)
 
