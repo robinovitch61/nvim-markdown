@@ -507,7 +507,7 @@ function M._return()
             vim.call("netrw#BrowseX", link.url, 0)
         elseif link.url:match("^#") then
             -- an anchor
-            vim.fn.search("^#*"..link.url)
+            vim.fn.search("^#* "..link.url:sub(2))
         else
             -- a file
             vim.cmd("e " .. link.url)
