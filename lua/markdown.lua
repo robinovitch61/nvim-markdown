@@ -528,7 +528,7 @@ function M.control_k()
     local mode = vim.fn.mode(".")
 
     local new_line, new_cursor_pos
-    if mode == "i" or mode == "ic" then
+    if mode == "i" or mode == "ic" or mode == "n" then
         local word = find_word_under_cursor()
         if word and (word.text:match("/") or vim.fn.filereadable(word.text) == 1) then
             -- convert an url to a link
