@@ -508,20 +508,6 @@ function! s:HeaderDecrease(line1, line2, ...)
     endfor
 endfunction
 
-" Wrapper to do move commands in visual mode.
-"
-function! s:VisMove(f)
-    norm! gv
-    call function(a:f)()
-endfunction
-
-" Map in both normal and visual modes.
-"
-function! s:MapNormVis(rhs,lhs)
-    execute 'nn <buffer><silent> ' . a:rhs . ' :call ' . a:lhs . '()<cr>'
-    execute 'vn <buffer><silent> ' . a:rhs . ' <esc>:call <sid>VisMove(''' . a:lhs . ''')<cr>'
-endfunction
-
 " Parameters:
 "
 " - step +1 for right, -1 for left
@@ -610,29 +596,6 @@ function! s:VersionAwareNetrwBrowseX(url)
         call netrw#NetrwBrowseX(a:url, 0)
     endif
 endf
-
-function! s:MapNotHasmapto(lhs, rhs)
-    if !hasmapto('<Plug>' . a:rhs)
-        execute 'nmap <buffer>' . a:lhs . ' <Plug>' . a:rhs
-        execute 'vmap <buffer>' . a:lhs . ' <Plug>' . a:rhs
-    endif
-endfunction
-
-call <sid>MapNormVis('<Plug>Markdown_MoveToNextHeader', '<sid>MoveToNextHeader')
-call <sid>MapNormVis('<Plug>Markdown_MoveToPreviousHeader', '<sid>MoveToPreviousHeader')
-call <sid>MapNormVis('<Plug>Markdown_MoveToNextSiblingHeader', '<sid>MoveToNextSiblingHeader')
-call <sid>MapNormVis('<Plug>Markdown_MoveToPreviousSiblingHeader', '<sid>MoveToPreviousSiblingHeader')
-call <sid>MapNormVis('<Plug>Markdown_MoveToParentHeader', '<sid>MoveToParentHeader')
-call <sid>MapNormVis('<Plug>Markdown_MoveToCurHeader', '<sid>MoveToCurHeader')
-
-if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
-    call <sid>MapNotHasmapto(']]', 'Markdown_MoveToNextHeader')
-    call <sid>MapNotHasmapto('[[', 'Markdown_MoveToPreviousHeader')
-    call <sid>MapNotHasmapto('][', 'Markdown_MoveToNextSiblingHeader')
-    call <sid>MapNotHasmapto('[]', 'Markdown_MoveToPreviousSiblingHeader')
-    call <sid>MapNotHasmapto(']u', 'Markdown_MoveToParentHeader')
-    call <sid>MapNotHasmapto(']c', 'Markdown_MoveToCurHeader')
-endif
 
 command! -buffer -range=% HeaderDecrease call s:HeaderDecrease(<line1>, <line2>)
 command! -buffer -range=% HeaderIncrease call s:HeaderDecrease(<line1>, <line2>, 1)
@@ -768,17 +731,50 @@ setlocal conceallevel=2
 setlocal viewoptions=folds,cursor
 setlocal foldtext=Foldtext_markdown()
 
-nmap <buffer> <C-c> <cmd>lua require("markdown").toggle_checkbox()<CR>
+" Map in both normal and visual modes.
+"
+function! s:Map(lhs,rhs)
+    execute 'nnoremap <buffer> <silent> ' . a:lhs . ' :call ' . a:rhs . '()<cr>'
+    execute 'vnoremap <buffer> <silent> ' . a:lhs . ' <cmd>call ' . a:rhs .'()<cr>'
+    execute 'inoremap <buffer> <silent> ' . a:lhs . ' <cmd>call ' . a:rhs .'()<cr>'
+endfunction
 
-nmap <buffer> <TAB> <cmd>lua require("markdown").normal_tab()<CR>
-imap <buffer> <TAB> <cmd>lua require("markdown").insert_tab()<CR>
+function! s:MapNotHasMapTo(lhs, rhs, modes)
+    if !hasmapto('<Plug>' . a:rhs)
+        for mode in split(a:modes, '\zs')
+            execute mode . 'map <buffer> ' . a:lhs . ' <Plug>' . a:rhs
+        endfor
+    endif
+endfunction
 
-nmap <buffer> <CR> <cmd>lua require("markdown")._return()<CR>
+call <sid>Map('<Plug>Markdown_MoveToNextHeader', '<sid>MoveToNextHeader')
+call <sid>Map('<Plug>Markdown_MoveToPreviousHeader', '<sid>MoveToPreviousHeader')
+call <sid>Map('<Plug>Markdown_MoveToNextSiblingHeader', '<sid>MoveToNextSiblingHeader')
+call <sid>Map('<Plug>Markdown_MoveToPreviousSiblingHeader', '<sid>MoveToPreviousSiblingHeader')
+call <sid>Map('<Plug>Markdown_MoveToParentHeader', '<sid>MoveToParentHeader')
+call <sid>Map('<Plug>Markdown_MoveToCurHeader', '<sid>MoveToCurHeader')
+call <sid>Map('<Plug>Markdown_Checkbox', 'v:lua.require("markdown").toggle_checkbox')
+call <sid>Map('<Plug>Markdown_Fold', 'v:lua.require("markdown").fold')
+call <sid>Map('<Plug>Markdown_Jump', 'v:lua.require("markdown").jump')
+call <sid>Map('<Plug>Markdown_CreateLink', 'v:lua.require("markdown").create_link')
+call <sid>Map('<Plug>Markdown_FollowLink', 'v:lua.require("markdown").follow_link')
 
-imap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
-nmap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
-vmap <buffer> <C-k> <cmd>lua require("markdown").control_k()<CR>
+if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
+    call <sid>MapNotHasMapTo(']]', 'Markdown_MoveToNextHeader', 'nv')
+    call <sid>MapNotHasMapTo('[[', 'Markdown_MoveToPreviousHeader', 'nv')
+    call <sid>MapNotHasMapTo('][', 'Markdown_MoveToNextSiblingHeader', 'nv')
+    call <sid>MapNotHasMapTo('[]', 'Markdown_MoveToPreviousSiblingHeader', 'nv')
+    call <sid>MapNotHasMapTo(']u', 'Markdown_MoveToParentHeader', 'nv')
+    call <sid>MapNotHasMapTo(']c', 'Markdown_MoveToCurHeader', 'nv')
+    call <sid>MapNotHasMapTo('<C-c>', 'Markdown_Checkbox', 'ni')
+    call <sid>MapNotHasMapTo('<TAB>', 'Markdown_Fold', 'n')
+    call <sid>MapNotHasMapTo('<TAB>', 'Markdown_Jump', 'i')
+    call <sid>MapNotHasMapTo('<C-k>', 'Markdown_CreateLink', 'ni')
+    call <sid>MapNotHasMapTo('<CR>', 'Markdown_Followlink', 'n')
 
+endif
+
+" overwrites inbuilt bindings, so shouldn't be editable
 imap <buffer> <CR> <cmd>lua require("markdown").newline("return")<CR>
 nmap <buffer> o <cmd>lua require("markdown").newline("o")<CR>
 nmap <buffer> O <cmd>lua require("markdown").newline("O")<CR>

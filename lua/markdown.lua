@@ -8,20 +8,21 @@ local regex = {
     ordered_list        = "^%s*%d+[%)%.]",
 }
 
--- to make M.backspace only trigger after a new line has been created an extmark
--- is placed and checked for
+-- to make M.backspace only trigger after a new line has been created
 -- TODO: This is a workaround. Another alternative is calling getchangelist() after
 --       every backspace, but that is uglier.
-local id = 1
-local callback_namespace = vim.api.nvim_create_namespace("")
+local should_run_callback = false
+local o_callback = false -- startinsert triggers callbacks for some reason
 local function key_callback(key)
-    -- extmark is set in the newline function and then removed at the end of this function
-    local extmark = vim.api.nvim_buf_get_extmark_by_id(0, callback_namespace, id, {})
+    if o_callback then
+        o_callback = false
+        return
+    end
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
-    if #extmark > 0 and key == backspace_term then
+    if should_run_callback and key == backspace_term then
         M.backspace()
     end
-    vim.api.nvim_buf_clear_namespace(0, callback_namespace, 0,-1)
+    should_run_callback = false
 end
 
 vim.on_key(key_callback)
@@ -378,7 +379,10 @@ function M.newline(key)
         vim.cmd("startinsert")
         vim.fn.append(insert_line, new_line)
         vim.api.nvim_win_set_cursor(0,{insert_line+1, 1000000})
-        id = vim.api.nvim_buf_set_extmark(0, callback_namespace, 0, 0, {}) -- For key_callback()
+        should_run_callback = true
+        if key == "o" or key == "O" then
+            o_callback = true
+        end
     elseif folded then
         -- is a folded header
         vim.cmd("startinsert")
@@ -392,8 +396,9 @@ function M.newline(key)
 end
 
 -- Pressing tab in insert mode calls this function
--- Removes auto-inserted bullet if the line is still empty
-function M.insert_tab()
+-- Indents auto-inserted bullet if the line is still empty
+-- Jumps between empty fields in links
+function M.jump()
     local cursor = vim.api.nvim_win_get_cursor(0)
 
     -- Check if bullet
@@ -441,7 +446,7 @@ end
 
 -- Pressing tab in normal mode calls this function
 -- Folds by bullets if cursor at one, else folds by headers
-function M.normal_tab()
+function M.fold()
     local line_num = vim.fn.line('.')
 
     -- Fold is closed, delete it and return
@@ -498,7 +503,7 @@ end
 
 -- Pressing return in normal mode will call this function.
 -- Follows links
-function M._return()
+function M.follow_link()
     local word = find_word_under_cursor()
     local link = find_link_under_cursor() -- matches []() links only
     if link and link.url then
@@ -521,8 +526,8 @@ end
 
 -- This function is called when control-k is pressed
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.
--- If no word is under the cursor, then insert the link syntax
-function M.control_k()
+-- If no word is under the cursor, insert the link syntax
+function M.create_link()
     local line = vim.fn.getline(".")
     local cursor = vim.api.nvim_win_get_cursor(0)
     local mode = vim.fn.mode(".")
@@ -546,28 +551,31 @@ function M.control_k()
             new_cursor_pos = #new_line
             new_line = new_line .. "()" .. line:sub(cursor[2] + 1)
         end
-    elseif mode == "v" then
-        local start = vim.fn.getpos("'<")
-        local stop = vim.fn.getpos("'>")
+    -- TODO: This doesn't currently work. When mapping, using <cmd> doesn't
+    -- set the '<> marks. And if you go to normal mode first, there's no way
+    -- to know you were in visual mode.
+    --elseif mode == "v" then
+    --    local start = vim.fn.getpos("'<")
+    --    local stop = vim.fn.getpos("'>")
 
-        -- Don't do anything if the visual selection spans multiple lines
-        if start[2] ~= stop[2] then
-            return
-        else
-            start = start[3]
-            stop = stop[3]
-        end
+    --    -- Don't do anything if the visual selection spans multiple lines
+    --    if start[2] ~= stop[2] then
+    --        return
+    --    else
+    --        start = start[3]
+    --        stop = stop[3]
+    --    end
 
-        local selection = line:sub(start, stop)
-        if selection:match("/") or vim.fn.filereadable(selection) == 1 then
-            new_line = line:sub(1,start-1) .. "[]"
-            new_cursor_pos = #new_line
-            new_line = new_line .. "(" .. selection .. ")" .. line:sub(stop+1)
-        else
-            new_line = line:sub(1,start-1) .. "[" .. selection .. "]()"
-            new_cursor_pos = #new_line
-            new_line = new_line .. line:sub(stop+1)
-        end
+    --    local selection = line:sub(start, stop)
+    --    if selection:match("/") or vim.fn.filereadable(selection) == 1 then
+    --        new_line = line:sub(1,start-1) .. "[]"
+    --        new_cursor_pos = #new_line
+    --        new_line = new_line .. "(" .. selection .. ")" .. line:sub(stop+1)
+    --    else
+    --        new_line = line:sub(1,start-1) .. "[" .. selection .. "]()"
+    --        new_cursor_pos = #new_line
+    --        new_line = new_line .. line:sub(stop+1)
+    --    end
     else
         return
     end
