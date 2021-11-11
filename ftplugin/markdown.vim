@@ -769,9 +769,8 @@ if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
     call <sid>MapNotHasMapTo('<C-c>', 'Markdown_Checkbox', 'ni')
     call <sid>MapNotHasMapTo('<TAB>', 'Markdown_Fold', 'n')
     call <sid>MapNotHasMapTo('<TAB>', 'Markdown_Jump', 'i')
-    call <sid>MapNotHasMapTo('<C-k>', 'Markdown_CreateLink', 'ni')
+    call <sid>MapNotHasMapTo('<C-k>', 'Markdown_CreateLink', 'nvi')
     call <sid>MapNotHasMapTo('<CR>', 'Markdown_Followlink', 'n')
-
 endif
 
 " overwrites inbuilt bindings, so shouldn't be editable

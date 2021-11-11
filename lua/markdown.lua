@@ -551,31 +551,30 @@ function M.create_link()
             new_cursor_pos = #new_line
             new_line = new_line .. "()" .. line:sub(cursor[2] + 1)
         end
-    -- TODO: This doesn't currently work. When mapping, using <cmd> doesn't
-    -- set the '<> marks. And if you go to normal mode first, there's no way
-    -- to know you were in visual mode.
-    --elseif mode == "v" then
-    --    local start = vim.fn.getpos("'<")
-    --    local stop = vim.fn.getpos("'>")
+    elseif mode == "v" or mode == "\22" then
+        -- \22 is visual block mode on mine, might be wrong for others.
+        vim.cmd(":normal! ") -- Need to return to normal mode to set the below marks
+        local start = vim.fn.getpos("'<")
+        local stop = vim.fn.getpos("'>")
 
-    --    -- Don't do anything if the visual selection spans multiple lines
-    --    if start[2] ~= stop[2] then
-    --        return
-    --    else
-    --        start = start[3]
-    --        stop = stop[3]
-    --    end
+        -- Don't do anything if the visual selection spans multiple lines
+        if start[2] ~= stop[2] then
+            return
+        else
+            start = start[3]
+            stop = stop[3]
+        end
 
-    --    local selection = line:sub(start, stop)
-    --    if selection:match("/") or vim.fn.filereadable(selection) == 1 then
-    --        new_line = line:sub(1,start-1) .. "[]"
-    --        new_cursor_pos = #new_line
-    --        new_line = new_line .. "(" .. selection .. ")" .. line:sub(stop+1)
-    --    else
-    --        new_line = line:sub(1,start-1) .. "[" .. selection .. "]()"
-    --        new_cursor_pos = #new_line
-    --        new_line = new_line .. line:sub(stop+1)
-    --    end
+        local selection = line:sub(start, stop)
+        if selection:match("/") or vim.fn.filereadable(selection) == 1 then
+            new_line = line:sub(1,start-1) .. "[]"
+            new_cursor_pos = #new_line
+            new_line = new_line .. "(" .. selection .. ")" .. line:sub(stop+1)
+        else
+            new_line = line:sub(1,start-1) .. "[" .. selection .. "]()"
+            new_cursor_pos = #new_line
+            new_line = new_line .. line:sub(stop+1)
+        end
     else
         return
     end
