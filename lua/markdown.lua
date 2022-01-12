@@ -517,9 +517,15 @@ function M.follow_link()
             -- a file
             vim.cmd("e " .. link.url)
         end
-    elseif word and word.text:match("^https?://") then
-        -- Bare url i.e without link syntax
-        vim.call("netrw#BrowseX", word.text, 0)
+    elseif word then
+        if word.text:match("^https?://") then
+            -- Bare url i.e without link syntax
+            vim.call("netrw#BrowseX", word.text, 0)
+        else
+            -- create a link
+            local filename = string.lower(word.text:gsub("%s","_") .. ".md")
+            vim.cmd('norm "_ciW[' .. word.text .. '](' .. filename ..')')
+        end
     end
 end
 
