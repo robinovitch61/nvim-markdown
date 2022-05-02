@@ -524,7 +524,7 @@ function M.follow_link()
         else
             -- create a link
             local filename = string.lower(word.text:gsub("%s","_") .. ".md")
-            vim.cmd('norm "_ciW[' .. word.text .. '](' .. filename ..')')
+            vim.cmd('norm! "_ciW[' .. word.text .. '](' .. filename ..')')
         end
     end
 end
