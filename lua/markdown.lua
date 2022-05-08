@@ -12,12 +12,7 @@ local regex = {
 -- TODO: This is a workaround. Another alternative is calling getchangelist() after
 --       every backspace, but that is uglier.
 local should_run_callback = false
-local o_callback = false -- startinsert triggers callbacks for some reason
 local function key_callback(key)
-    if o_callback then
-        o_callback = false
-        return
-    end
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
     if should_run_callback and key == backspace_term then
         M.backspace()
@@ -380,9 +375,6 @@ function M.newline(key)
         vim.fn.append(insert_line, new_line)
         vim.api.nvim_win_set_cursor(0,{insert_line+1, 1000000})
         should_run_callback = true
-        if key == "o" or key == "O" then
-            o_callback = true
-        end
     elseif folded then
         -- is a folded header
         vim.cmd("startinsert")
