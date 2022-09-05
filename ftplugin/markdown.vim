@@ -738,11 +738,11 @@ function! s:Map(lhs,rhs)
 endfunction
 
 function! s:MapNotHasMapTo(lhs, rhs, modes)
-    if !hasmapto('<Plug>' . a:rhs)
-        for mode in split(a:modes, '\zs')
+    for mode in split(a:modes, '\zs')
+        if !hasmapto('<Plug>' . a:rhs, mode)
             execute mode . 'map <buffer> ' . a:lhs . ' <Plug>' . a:rhs
-        endfor
-    endif
+        endif
+    endfor
 endfunction
 
 call <sid>Map('<Plug>Markdown_MoveToNextHeader', '<sid>MoveToNextHeader')
