@@ -730,6 +730,7 @@ setlocal formatoptions+=r " auto-insert > on newline
 setlocal conceallevel=2
 setlocal viewoptions=folds,cursor
 setlocal foldtext=Foldtext_markdown()
+setlocal foldopen-=undo
 
 function! s:Map(lhs,rhs)
     execute 'nnoremap <buffer> <silent> ' . a:lhs . ' :call ' . a:rhs . '()<cr>'
