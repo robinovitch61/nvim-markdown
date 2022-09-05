@@ -731,8 +731,6 @@ setlocal conceallevel=2
 setlocal viewoptions=folds,cursor
 setlocal foldtext=Foldtext_markdown()
 
-" Map in both normal and visual modes.
-"
 function! s:Map(lhs,rhs)
     execute 'nnoremap <buffer> <silent> ' . a:lhs . ' :call ' . a:rhs . '()<cr>'
     execute 'vnoremap <buffer> <silent> ' . a:lhs . ' <cmd>call ' . a:rhs .'()<cr>'
@@ -758,6 +756,8 @@ call <sid>Map('<Plug>Markdown_Fold', 'v:lua.require("markdown").fold')
 call <sid>Map('<Plug>Markdown_Jump', 'v:lua.require("markdown").jump')
 call <sid>Map('<Plug>Markdown_CreateLink', 'v:lua.require("markdown").create_link')
 call <sid>Map('<Plug>Markdown_FollowLink', 'v:lua.require("markdown").follow_link')
+call <sid>Map('<Plug>Markdown_NewLineAbove', 'v:lua.require("markdown").new_line_above')
+call <sid>Map('<Plug>Markdown_NewLineBelow', 'v:lua.require("markdown").new_line_below')
 
 if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
     call <sid>MapNotHasMapTo(']]', 'Markdown_MoveToNextHeader', 'nv')
@@ -771,9 +771,7 @@ if !get(g:, 'vim_markdown_no_default_key_mappings', 0)
     call <sid>MapNotHasMapTo('<TAB>', 'Markdown_Jump', 'i')
     call <sid>MapNotHasMapTo('<C-k>', 'Markdown_CreateLink', 'vi')
     call <sid>MapNotHasMapTo('<CR>', 'Markdown_FollowLink', 'n')
+    call <sid>MapNotHasMapTo('o', 'Markdown_NewLineBelow', 'n')
+    call <sid>MapNotHasMapTo('O', 'Markdown_NewLineAbove', 'n')
+    call <sid>MapNotHasMapTo('<CR>', 'Markdown_NewLineBelow', 'i')
 endif
-
-" overwrites inbuilt bindings, so shouldn't be editable
-imap <buffer> <CR> <cmd>lua require("markdown").newline("return")<CR>
-nmap <buffer> o <cmd>lua require("markdown").newline("o")<CR>
-nmap <buffer> O <cmd>lua require("markdown").newline("O")<CR>

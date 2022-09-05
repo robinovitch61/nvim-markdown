@@ -20,12 +20,8 @@ To install manually instead, see `:help plugin`
 * Auto-inserts bullets on newline; can be removed again with `backspace` while preserving indentation, or `tab` to create a sub-list.
 * Create links `[link text](url)` by pressing `Control-k` in insert or visual mode. If pressed in an url, or in a word, it will autofill the correct field.
  `tab` can be used in insert mode to skip from one field to the next.
-* Follow links with `Return`, works with:
-    * Files
-    * URLs
-    * `[](#anchor)` goes to the position of the header
- 
-  It will also create a link to a markdown file, if pressed over a word.
+* Follow links with `Return`
+* `Return` will create a link to a markdown file, if pressed over a word.
 
 ## Options
 <details><summary>Syntax Concealing</summary>
@@ -120,17 +116,24 @@ JSON syntax highlight requires [vim-json](https://github.com/elzr/vim-json).
 
 ## Mappings
 
-- `]]`: Go to next header. `<Plug>Markdown_MoveToNextHeader`
-- `[[`: Go to previous header. Contrast with `]c`. `<Plug>Markdown_MoveToPreviousHeader`
-- `][`: Go to next sibling header if any. `<Plug>Markdown_MoveToNextSiblingHeader`
-- `[]`: Go to previous sibling header if any. `<Plug>Markdown_MoveToPreviousSiblingHeader`
-- `]c`: Go to Current header. `<Plug>Markdown_MoveToCurHeader`
-- `]u`: Go to parent header (Up). `<Plug>Markdown_MoveToParentHeader`
-- `Ctrl-c`: Toggle checkboxes. `<Plug>Markdown_Checkbox`
-- `Tab`: Fold headers/lists. `<Plug>Markdown_Fold`
-- `Tab`: Indent new bullets, jump through empty fields in links. `<Plug>Markdown_Jump`
-- `Ctrl-k`: Create new links. `<Plug>Markdown_CreateLink`
-- `Return`: Follow links. `<Plug>Markdown_FollowLink`
+#### Normal mode
+   - `]]`: Go to next header. `<Plug>Markdown_MoveToNextHeader`
+   - `[[`: Go to previous header. Contrast with `]c`. `<Plug>Markdown_MoveToPreviousHeader`
+   - `][`: Go to next sibling header if any. `<Plug>Markdown_MoveToNextSiblingHeader`
+   - `[]`: Go to previous sibling header if any. `<Plug>Markdown_MoveToPreviousSiblingHeader`
+   - `]c`: Go to Current header. `<Plug>Markdown_MoveToCurHeader`
+   - `]u`: Go to parent header (Up). `<Plug>Markdown_MoveToParentHeader`
+   - `Ctrl-c`: Toggle checkboxes. `<Plug>Markdown_Checkbox`
+   - `Tab`: Fold headers/lists. `<Plug>Markdown_Fold`
+   - `Return`: Follow links. `<Plug>Markdown_FollowLink`
+#### Insert mode
+   - `Tab`: Indent new bullets, jump through empty fields in links. `<Plug>Markdown_Jump`
+   - `Ctrl-k`: Create new links. `<Plug>Markdown_CreateLink`
+   - `O`: New line above, overrides default. `<Plug>Markdown_NewLineAbove`
+   - `o`: New line below, overrides default. `<Plug>Markdown_NewLineBelow`
+   - `Return`: New line below, overrides default. `<Plug>Markdown_NewLineBelow`
+#### Visual mode
+   - `Ctrl-k`: Create new links. `<Plug>Markdown_CreateLink`
 
 This plugin follows the recommended Vim plugin mapping interface, so to change the map `]u` to `asdf`, add to your `.vimrc`:
 

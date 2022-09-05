@@ -281,47 +281,9 @@ function M.backspace()
 end
 
 
--- Responsible for auto-inserting new bullet points when pressing
--- Return, o or O
-function M.newline(key)
-    -- First find which line will be above and below the newly inserted line
+-- Responsible for auto-inserting new bullet points
+local function newline(insert_line, folded)
     local bullet_above, bullet_below
-    local insert_line
-    local folded
-    if key == "O" then
-        local line = vim.fn.line(".")
-        if vim.fn.foldclosed(line - 1) > 0 then
-            insert_line = vim.fn.foldclosedend(line - 1)
-            folded = true
-        else
-            insert_line = line - 1
-        end
-    elseif key == "o" then
-        if vim.fn.foldclosed(".") > 0 then
-            insert_line = vim.fn.foldclosedend(".")
-            folded = true
-        else
-            insert_line = vim.fn.line(".")
-        end
-    elseif key == "return" then
-        key = "<CR>" -- Can't pass "return" directly to the mapping?
-
-        -- if not at EOL, normal Return
-        local column = vim.api.nvim_win_get_cursor(0)[2] + 1
-        local line = vim.api.nvim_get_current_line()
-        if column < #line then
-            key = vim.api.nvim_replace_termcodes(key, true, false, true)
-            vim.api.nvim_feedkeys(key, "n", true)
-            return
-        else
-            insert_line = vim.fn.line(".")
-        end
-
-        bullet_above = parse_bullet(insert_line)
-    else
-        error(string.format("%s is not a valid key", key))
-    end
-
 
     if folded then
         bullet_above = parse_bullet(vim.fn.foldclosed(insert_line))
@@ -333,8 +295,7 @@ function M.newline(key)
 
     if bullet_above then
         -- remove bullet and insert new line if the bullet is empty
-        if #bullet_above.text == 0 and (key == "<CR>" or key == "o")  then
-            -- the bullet is empty, remove it and start a new line below it
+        if #bullet_above.text == 0 then
             vim.cmd("startinsert")
             vim.api.nvim_buf_set_lines(0, insert_line-1, insert_line, true, {"",""})
             vim.api.nvim_win_set_cursor(0,{insert_line+1, 0})
@@ -376,15 +337,53 @@ function M.newline(key)
         vim.api.nvim_win_set_cursor(0,{insert_line+1, 1000000})
         should_run_callback = true
     elseif folded then
-        -- is a folded header
         vim.cmd("startinsert")
         vim.fn.append(insert_line, "")
         vim.api.nvim_win_set_cursor(0,{insert_line+1, 0})
     else
-        -- Normal key
-        key = vim.api.nvim_replace_termcodes(key, true, false, true)
-        vim.api.nvim_feedkeys(key, "n", true)
+        -- Insert line normally
+        vim.cmd("startinsert")
+        vim.fn.append(insert_line, "")
+        vim.api.nvim_win_set_cursor(0,{insert_line+1, 1000000})
     end
+end
+
+function M.new_line_above()
+    local insert_line = vim.fn.line(".")
+    local folded
+
+    if vim.fn.foldclosed(insert_line - 1) > 0 then
+        insert_line = vim.fn.foldclosedend(insert_line - 1)
+        folded = true
+    else
+        insert_line = insert_line - 1
+    end
+
+    newline(insert_line, folded)
+end
+
+function M.new_line_below()
+    local insert_line = vim.fn.line(".")
+    local folded
+
+    -- Insert mode means a return is wanted
+    if vim.fn.mode() == "i" then
+        local column = vim.api.nvim_win_get_cursor(0)[2] + 1
+        local line = vim.api.nvim_get_current_line()
+        -- if not at EOL, normal Return
+        if column < #line then
+            key = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+            vim.api.nvim_feedkeys(key, "n", true)
+            return
+        end
+    else
+        if vim.fn.foldclosed(".") > 0 then
+            insert_line = vim.fn.foldclosedend(".")
+            folded = true
+        end
+    end
+
+    newline(insert_line, folded)
 end
 
 -- Pressing tab in insert mode calls this function
@@ -522,7 +521,6 @@ function M.follow_link()
 end
 
 
--- This function is called when control-k is pressed
 -- Takes the word under the cursor and puts it in the appropriate spot in a link.
 -- If no word is under the cursor, insert the link syntax
 function M.create_link()
