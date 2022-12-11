@@ -145,10 +145,10 @@ local function parse_bullet(bullet_line)
     end
 
     -- Test for checkbox, too hard to do above
-    local checkbox = bullet.text:match("^%[([%sX])%]")
+    local checkbox = bullet.text:match("^%[([%sx])%]")
     if checkbox then
         bullet.checkbox = {}
-        bullet.checkbox.checked = checkbox == "X" and true or false
+        bullet.checkbox.checked = checkbox == "x" and true or false
         bullet.text = bullet.text:sub(5)
     end
 
@@ -645,11 +645,11 @@ function M.toggle_checkbox()
         if #bullet.text == 0 then
             -- if there is no text the user probably wants to remove the checkbox
             -- since it's not returning here, it will hit the if below, and get replaced again
-            line = line:gsub("%[%s%]","[X]")
+            line = line:gsub("%[%s%]","[x]")
             bullet.checkbox.checked = true
         else
             -- else fill it
-            line = line:gsub("%[%s]","[X]")
+            line = line:gsub("%[%s]","[x]")
             vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
             return
         end
@@ -658,7 +658,7 @@ function M.toggle_checkbox()
 
     -- Return to normal list item
     if bullet.checkbox and bullet.checkbox.checked then
-        line = line:gsub("%s%[X%]","")
+        line = line:gsub("%s%[x%]","")
         vim.api.nvim_buf_set_lines(0, cursor[1]-1, cursor[1], 1, {line})
 
         -- If the cursor was in the bullet text, move it backwards
