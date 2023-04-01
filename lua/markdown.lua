@@ -9,15 +9,17 @@ local regex = {
 }
 
 -- to make M.backspace only trigger after a new line has been created
--- TODO: This is a workaround. Another alternative is calling getchangelist() after
---       every backspace, but that is uglier.
 local should_run_callback = false
 local function key_callback(key)
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
-    if should_run_callback and key == backspace_term then
-        M.backspace()
+
+    -- It sends some key on o and O "<80><fd>h", which is some special key I didn't ask for.
+    if should_run_callback and not (key:len() == 3 and key ~= backspace_term) then
+        if key == backspace_term then
+            M.backspace()
+        end
+        should_run_callback = false
     end
-    should_run_callback = false
 end
 
 vim.on_key(key_callback)
