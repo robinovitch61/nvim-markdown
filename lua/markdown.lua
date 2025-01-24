@@ -14,7 +14,7 @@ local function key_callback(key)
     local backspace_term = vim.api.nvim_replace_termcodes("<BS>",true, true, true)
 
     -- It sends some key on o and O "<80><fd>h", which is some special key I didn't ask for.
-    if should_run_callback and not (key:len() == 3 and key ~= backspace_term) then
+    if should_run_callback and key ~= '\x80\xfdh' then
         if key == backspace_term then
             M.backspace()
         end
@@ -512,17 +512,35 @@ function M.follow_link()
             -- an anchor
             vim.fn.search("^#* "..link.url:sub(2))
         else
-            -- a file
-            vim.cmd("e " .. link.url)
+            -- a file path
+
+            -- check if path contains a line number (ex. file.md#L10)
+            local line_number = link.url:match("#L(%d+)$") or ""
+            if line_number ~= "" then
+                -- remove line number info if it exists
+                line_number = "+" .. line_number .. " "
+                link.url = link.url:gsub("#L%d+$", "")
+            end
+
+            -- try to follow path
+            local ok, _ = pcall(function ()
+                if string.match(link.url, "^[~/]") then
+                    -- an absolute path
+                    vim.cmd("e " .. line_number .. link.url)
+                else
+                    -- a relative path
+                    vim.cmd("e " .. line_number .. vim.fn.expand('%:p:h') .. '/' .. link.url)
+                end
+            end)
+
+            if not ok then
+                vim.notify("Invalid link: " .. link.url, vim.log.levels.ERROR)
+            end
         end
     elseif word then
         if word.text:match("^https?://") then
             -- Bare url i.e without link syntax
             vim.call("netrw#BrowseX", word.text, 0)
-        else
-            -- create a link
-            local filename = string.lower(word.text:gsub("%s","_") .. ".md")
-            vim.cmd('norm! "_ciW[' .. word.text .. '](' .. filename ..')')
         end
     end
 end
